@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const NAV_LINKS = ["About", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
 
@@ -110,8 +110,8 @@ const BLOGS = [
   },
 ];
 
-function useInView(threshold = 0.15) {
-  const ref = useRef(null);
+function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement>, boolean] {
+  const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
@@ -121,7 +121,13 @@ function useInView(threshold = 0.15) {
   return [ref, inView];
 }
 
-function AnimSection({ children, className = "", delay = 0 }) {
+interface AnimSectionProps {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}
+
+function AnimSection({ children, className = "", delay = 0 }: AnimSectionProps) {
   const [ref, inView] = useInView();
   return (
     <div ref={ref} className={className} style={{
