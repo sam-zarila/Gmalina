@@ -2,7 +2,113 @@
 
 import { useState, useEffect, useRef } from "react";
 
-const NAV_LINKS = ["About", "Facilities", "Guests", "Attractions", "Contact"];
+const NAV_LINKS = ["About", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
+
+const GALLERY_ITEMS = [
+  { emoji: "🏊", label: "Swimming Pool", category: "Facilities", span: "wide", bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))" },
+  { emoji: "🛏️", label: "Deluxe Suite", category: "Rooms", span: "tall", bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))" },
+  { emoji: "🍽️", label: "Fine Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))" },
+  { emoji: "🦁", label: "Safari Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(180,140,30,0.25), rgba(50,40,0,0.6))" },
+  { emoji: "🎤", label: "Conference Hall", category: "Business", span: "normal", bg: "linear-gradient(135deg, rgba(60,80,180,0.2), rgba(10,10,50,0.6))" },
+  { emoji: "💪", label: "Fitness Center", category: "Facilities", span: "normal", bg: "linear-gradient(135deg, rgba(20,160,100,0.2), rgba(0,30,20,0.6))" },
+  { emoji: "🌿", label: "Garden Terrace", category: "Outdoors", span: "tall", bg: "linear-gradient(135deg, rgba(40,140,60,0.2), rgba(0,20,0,0.6))" },
+  { emoji: "🍹", label: "Poolside Bar", category: "Bar", span: "normal", bg: "linear-gradient(135deg, rgba(200,100,20,0.2), rgba(50,20,0,0.6))" },
+  { emoji: "🌅", label: "Sunrise Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(220,120,40,0.25), rgba(60,20,0,0.6))" },
+];
+
+const GALLERY_FILTERS = ["All", "Rooms", "Facilities", "Restaurant", "Nature", "Business", "Outdoors", "Bar"];
+
+const FAQS = [
+  {
+    q: "What are the check-in and check-out times?",
+    a: "Check-in is from 2:00 PM and check-out is by 11:00 AM. Early check-in and late check-out can be arranged subject to availability—please contact our concierge team in advance."
+  },
+  {
+    q: "Is airport transfer available?",
+    a: "Yes, we offer private airport transfers to and from Chileka International Airport (Blantyre) and Kamuzu International Airport (Lilongwe). Please book at least 48 hours in advance through our concierge."
+  },
+  {
+    q: "Do you cater for dietary requirements?",
+    a: "Absolutely. Our restaurant accommodates vegetarian, vegan, gluten-free, halal, and other dietary requirements. Please inform us at the time of booking and our chefs will prepare accordingly."
+  },
+  {
+    q: "Can I book the conference hall for a day event?",
+    a: "Yes, our conference facilities are available for day bookings. We offer full-day and half-day packages that include AV equipment, high-speed Wi-Fi, and catering options tailored to your event."
+  },
+  {
+    q: "Are safari packages available through the lodge?",
+    a: "Yes! We partner with licensed safari operators at Liwonde National Park, just 5 minutes away. We can arrange game drives, boat safaris, and guided walking tours. Ask our concierge for current packages and pricing."
+  },
+  {
+    q: "Is the swimming pool available to non-residents?",
+    a: "The pool is primarily reserved for lodge guests. However, day passes may be available on request—please contact us directly for pricing and availability."
+  },
+  {
+    q: "What payment methods do you accept?",
+    a: "We accept cash (MWK and USD), major credit/debit cards, and mobile money payments. A deposit may be required to confirm your booking."
+  },
+  {
+    q: "Is Wi-Fi available throughout the property?",
+    a: "Yes, complimentary high-speed Wi-Fi is available in all rooms, the conference centre, restaurant, bar, and common areas throughout the property."
+  },
+];
+
+const BLOGS = [
+  {
+    category: "Travel Guide",
+    title: "The Ultimate Safari Guide to Liwonde National Park",
+    excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.",
+    date: "Jan 15, 2025",
+    readTime: "8 min read",
+    emoji: "🦁",
+    color: "rgba(201,169,110,0.15)"
+  },
+  {
+    category: "Cuisine",
+    title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant",
+    excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi — and how we reimagine it on your plate.",
+    date: "Feb 3, 2025",
+    readTime: "5 min read",
+    emoji: "🍽️",
+    color: "rgba(20,160,140,0.12)"
+  },
+  {
+    category: "Events",
+    title: "How to Plan the Perfect Corporate Retreat in Malawi",
+    excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue — and how to plan it.",
+    date: "Feb 20, 2025",
+    readTime: "6 min read",
+    emoji: "💼",
+    color: "rgba(100,80,200,0.12)"
+  },
+  {
+    category: "Lifestyle",
+    title: "Lake Malawi: A Weekend Escape from the Lodge",
+    excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages worth visiting.",
+    date: "Mar 1, 2025",
+    readTime: "7 min read",
+    emoji: "🌊",
+    color: "rgba(20,100,180,0.12)"
+  },
+  {
+    category: "Wellness",
+    title: "Morning Rituals: How Our Guests Start the Perfect Day",
+    excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.",
+    date: "Mar 8, 2025",
+    readTime: "4 min read",
+    emoji: "🌅",
+    color: "rgba(220,120,40,0.12)"
+  },
+  {
+    category: "Culture",
+    title: "Exploring Malawian Craft Markets: A Buyer's Guide",
+    excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically and support local artisans.",
+    date: "Mar 14, 2025",
+    readTime: "5 min read",
+    emoji: "🏺",
+    color: "rgba(180,80,40,0.12)"
+  },
+];
 
 function useInView(threshold = 0.15) {
   const ref = useRef(null);
@@ -67,6 +173,10 @@ export default function GmalinaCourtWebsite() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [galleryFilter, setGalleryFilter] = useState("All");
+  const [lightbox, setLightbox] = useState(null);
+  const [openFaq, setOpenFaq] = useState(null);
+  const [activeBlogTag, setActiveBlogTag] = useState("All");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -320,6 +430,156 @@ export default function GmalinaCourtWebsite() {
           transition: color 0.3s;
         }
         .footer-link:hover { color: #c9a96e; }
+
+        /* Gallery */
+        .gallery-filter-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          padding: 8px 20px;
+          border-radius: 100px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: transparent;
+          color: rgba(244,240,234,0.6);
+          cursor: pointer;
+          transition: all 0.3s;
+          letter-spacing: 0.03em;
+        }
+        .gallery-filter-btn:hover { border-color: rgba(201,169,110,0.4); color: #c9a96e; }
+        .gallery-filter-btn.active {
+          background: linear-gradient(135deg, #c9a96e, #e8d5a3);
+          color: #08090a;
+          border-color: transparent;
+          font-weight: 600;
+        }
+
+        .gallery-item {
+          border-radius: 20px;
+          overflow: hidden;
+          cursor: pointer;
+          position: relative;
+          transition: transform 0.4s ease, box-shadow 0.4s ease;
+          border: 1px solid rgba(255,255,255,0.06);
+        }
+        .gallery-item:hover { transform: scale(1.02); box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
+        .gallery-item:hover .gallery-overlay { opacity: 1; }
+        .gallery-item:hover .gallery-icon { transform: scale(1.1); }
+
+        .gallery-overlay {
+          position: absolute; inset: 0;
+          background: rgba(8,9,10,0.55);
+          backdrop-filter: blur(4px);
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          opacity: 0; transition: opacity 0.35s;
+          gap: 8px;
+        }
+
+        .gallery-icon { transition: transform 0.4s; font-size: 52px; }
+
+        /* Lightbox */
+        .lightbox-backdrop {
+          position: fixed; inset: 0; z-index: 9000;
+          background: rgba(0,0,0,0.92);
+          backdrop-filter: blur(20px);
+          display: flex; align-items: center; justify-content: center;
+          animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+        /* FAQ */
+        .faq-item {
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 16px;
+          overflow: hidden;
+          transition: border-color 0.3s;
+          margin-bottom: 12px;
+        }
+        .faq-item.open { border-color: rgba(201,169,110,0.3); }
+
+        .faq-question {
+          width: 100%;
+          background: rgba(255,255,255,0.03);
+          border: none;
+          color: #f4f0ea;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          text-align: left;
+          padding: 22px 28px;
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          transition: background 0.3s;
+        }
+        .faq-question:hover { background: rgba(201,169,110,0.05); }
+        .faq-item.open .faq-question { background: rgba(201,169,110,0.07); }
+
+        .faq-chevron {
+          width: 28px; height: 28px; border-radius: 50%;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.35s, background 0.3s;
+          font-size: 13px; color: #c9a96e;
+        }
+        .faq-item.open .faq-chevron { transform: rotate(180deg); background: rgba(201,169,110,0.15); }
+
+        .faq-answer {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 15px;
+          color: rgba(244,240,234,0.65);
+          line-height: 1.8;
+          padding: 0 28px;
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.4s ease, padding 0.4s ease;
+        }
+        .faq-item.open .faq-answer { max-height: 240px; padding: 4px 28px 24px; }
+
+        /* Blog */
+        .blog-card {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 24px;
+          overflow: hidden;
+          transition: all 0.4s;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+        }
+        .blog-card:hover {
+          border-color: rgba(201,169,110,0.25);
+          transform: translateY(-6px);
+          box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+        }
+        .blog-card:hover .blog-read-more { color: #c9a96e; gap: 10px; }
+
+        .blog-read-more {
+          display: flex; align-items: center; gap: 6px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 600;
+          color: rgba(244,240,234,0.5);
+          transition: all 0.3s;
+          margin-top: auto;
+        }
+
+        .blog-tag-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 600;
+          padding: 6px 16px; border-radius: 100px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: transparent;
+          color: rgba(244,240,234,0.55);
+          cursor: pointer;
+          transition: all 0.3s;
+          letter-spacing: 0.04em;
+        }
+        .blog-tag-btn:hover { border-color: rgba(201,169,110,0.35); color: #c9a96e; }
+        .blog-tag-btn.active { background: rgba(201,169,110,0.12); border-color: rgba(201,169,110,0.3); color: #c9a96e; }
 
         .section-label {
           font-family: 'DM Sans', sans-serif;
@@ -715,6 +975,246 @@ export default function GmalinaCourtWebsite() {
         </div>
       </section>
 
+      {/* ─── GALLERY ─── */}
+      <section id="gallery" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <AnimSection>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 32 }}>
+              <div>
+                <span className="section-label">Photo Gallery</span>
+                <div className="divider-line" />
+                <h2 style={{ fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 800, letterSpacing: "-0.02em" }}>
+                  See it to<br /><span className="gold-text">Believe It</span>
+                </h2>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {GALLERY_FILTERS.map(f => (
+                  <button key={f} className={`gallery-filter-btn ${galleryFilter === f ? "active" : ""}`} onClick={() => setGalleryFilter(f)}>{f}</button>
+                ))}
+              </div>
+            </div>
+          </AnimSection>
+
+          {/* Masonry-style grid */}
+          <div style={{ columns: "3 300px", columnGap: 16 }}>
+            {GALLERY_ITEMS.filter(g => galleryFilter === "All" || g.category === galleryFilter).map((item, i) => (
+              <AnimSection key={`${galleryFilter}-${i}`} delay={i * 0.06}>
+                <div
+                  className="gallery-item"
+                  style={{
+                    background: item.bg,
+                    height: item.span === "tall" ? 340 : item.span === "wide" ? 220 : 240,
+                    marginBottom: 16,
+                    breakInside: "avoid",
+                    display: "flex", alignItems: "center", justifyContent: "center"
+                  }}
+                  onClick={() => setLightbox(item)}
+                >
+                  <div style={{ textAlign: "center" }}>
+                    <div className="gallery-icon">{item.emoji}</div>
+                  </div>
+                  <div className="gallery-overlay">
+                    <div style={{ fontSize: 48 }}>{item.emoji}</div>
+                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: "#fff" }}>{item.label}</div>
+                    <div style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                      color: "rgba(255,255,255,0.6)", letterSpacing: "0.1em", textTransform: "uppercase",
+                      padding: "4px 14px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 100
+                    }}>{item.category}</div>
+                    <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)", marginTop: 8 }}>⊕</div>
+                  </div>
+                </div>
+              </AnimSection>
+            ))}
+          </div>
+        </div>
+
+        {/* Lightbox */}
+        {lightbox && (
+          <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
+            <div style={{
+              background: "rgba(14,16,18,0.95)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 28, padding: "64px 80px",
+              textAlign: "center", maxWidth: 480,
+              position: "relative"
+            }} onClick={e => e.stopPropagation()}>
+              <button onClick={() => setLightbox(null)} style={{
+                position: "absolute", top: 20, right: 20,
+                background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
+                color: "#f4f0ea", width: 36, height: 36, borderRadius: "50%",
+                cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center"
+              }}>×</button>
+              <div style={{ fontSize: 96, marginBottom: 24 }}>{lightbox.emoji}</div>
+              <h3 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>{lightbox.label}</h3>
+              <div style={{
+                display: "inline-flex",
+                background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.2)",
+                borderRadius: 100, padding: "4px 16px",
+                fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#c9a96e",
+                letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600
+              }}>{lightbox.category}</div>
+              <p style={{ marginTop: 20, color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.7, fontSize: 15 }}>
+                Experience the finest {lightbox.label.toLowerCase()} at Gmalina Court — crafted to exceed every expectation.
+              </p>
+              <a href="#contact" className="btn-primary" style={{ marginTop: 32, display: "inline-block" }} onClick={() => setLightbox(null)}>
+                Book Now →
+              </a>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ─── BLOG ─── */}
+      <section id="blog" style={{ padding: "120px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <AnimSection>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 56, flexWrap: "wrap", gap: 32 }}>
+              <div>
+                <span className="section-label">Stories & Insights</span>
+                <div className="divider-line" />
+                <h2 style={{ fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 800, letterSpacing: "-0.02em" }}>
+                  From Our<br /><span className="gold-text">Journal</span>
+                </h2>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["All", "Travel Guide", "Cuisine", "Events", "Lifestyle", "Wellness", "Culture"].map(tag => (
+                  <button key={tag} className={`blog-tag-btn ${activeBlogTag === tag ? "active" : ""}`} onClick={() => setActiveBlogTag(tag)}>{tag}</button>
+                ))}
+              </div>
+            </div>
+          </AnimSection>
+
+          {/* Featured post */}
+          {(activeBlogTag === "All" || BLOGS[0].category === activeBlogTag) && (
+            <AnimSection>
+              <div style={{
+                background: "rgba(201,169,110,0.06)",
+                border: "1px solid rgba(201,169,110,0.18)",
+                borderRadius: 28,
+                padding: "0",
+                overflow: "hidden",
+                display: "grid", gridTemplateColumns: "1fr 1.2fr",
+                marginBottom: 24,
+                cursor: "pointer",
+                transition: "all 0.4s"
+              }}>
+                <div style={{
+                  background: BLOGS[0].color,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 120, padding: "60px",
+                  borderRight: "1px solid rgba(201,169,110,0.12)"
+                }}>{BLOGS[0].emoji}</div>
+                <div style={{ padding: "52px 48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20 }}>
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700,
+                      letterSpacing: "0.15em", textTransform: "uppercase", color: "#c9a96e",
+                      background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.25)",
+                      padding: "4px 12px", borderRadius: 100
+                    }}>⭐ Featured</span>
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600,
+                      letterSpacing: "0.1em", textTransform: "uppercase", color: "#14a08c",
+                      background: "rgba(20,160,140,0.1)", border: "1px solid rgba(20,160,140,0.2)",
+                      padding: "4px 12px", borderRadius: 100
+                    }}>{BLOGS[0].category}</span>
+                  </div>
+                  <h3 style={{ fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em" }}>{BLOGS[0].title}</h3>
+                  <p style={{ color: "rgba(244,240,234,0.6)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 15, fontWeight: 300, marginBottom: 28 }}>{BLOGS[0].excerpt}</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", gap: 20 }}>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(244,240,234,0.4)" }}>📅 {BLOGS[0].date}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(244,240,234,0.4)" }}>⏱ {BLOGS[0].readTime}</span>
+                    </div>
+                    <span className="blog-read-more">Read Article →</span>
+                  </div>
+                </div>
+              </div>
+            </AnimSection>
+          )}
+
+          {/* Grid of remaining posts */}
+          <div className="grid-3">
+            {BLOGS.filter((b, i) => (i > 0 || activeBlogTag !== "All") && (activeBlogTag === "All" || b.category === activeBlogTag)).map((post, i) => (
+              <AnimSection key={post.title} delay={i * 0.08}>
+                <div className="blog-card">
+                  <div style={{
+                    background: post.color,
+                    height: 180, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    fontSize: 72, borderBottom: "1px solid rgba(255,255,255,0.05)"
+                  }}>{post.emoji}</div>
+                  <div style={{ padding: "28px 28px 32px", display: "flex", flexDirection: "column", gap: 12, flexGrow: 1 }}>
+                    <span style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700,
+                      letterSpacing: "0.12em", textTransform: "uppercase", color: "#14a08c"
+                    }}>{post.category}</span>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.01em" }}>{post.title}</h3>
+                    <p style={{ color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 14, fontWeight: 300 }}>{post.excerpt}</p>
+                    <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(244,240,234,0.35)" }}>📅 {post.date}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(244,240,234,0.35)" }}>⏱ {post.readTime}</span>
+                    </div>
+                    <span className="blog-read-more" style={{ paddingTop: 8 }}>Read More →</span>
+                  </div>
+                </div>
+              </AnimSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ ─── */}
+      <section id="faq" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: 80, alignItems: "start" }}>
+            <AnimSection>
+              <div style={{ position: "sticky", top: 120 }}>
+                <span className="section-label">FAQ</span>
+                <div className="divider-line" />
+                <h2 style={{ fontSize: "clamp(32px, 3.5vw, 52px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 24 }}>
+                  Questions<br /><span className="gold-text">Answered</span>
+                </h2>
+                <p style={{ color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, fontSize: 15, fontWeight: 300, marginBottom: 40 }}>
+                  Can't find what you're looking for? Our concierge team is available 24/7.
+                </p>
+                <a href="#contact" className="btn-primary">Ask a Question →</a>
+
+                {/* Decorative element */}
+                <div style={{
+                  marginTop: 48,
+                  background: "rgba(201,169,110,0.06)",
+                  border: "1px solid rgba(201,169,110,0.15)",
+                  borderRadius: 20, padding: "24px",
+                  display: "flex", gap: 16, alignItems: "center"
+                }}>
+                  <div style={{ fontSize: 36 }}>📞</div>
+                  <div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Direct Line</div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, color: "#c9a96e", fontWeight: 600 }}>+265 998 00 19 09</div>
+                  </div>
+                </div>
+              </div>
+            </AnimSection>
+
+            <div>
+              {FAQS.map((faq, i) => (
+                <AnimSection key={i} delay={i * 0.05}>
+                  <div className={`faq-item ${openFaq === i ? "open" : ""}`}>
+                    <button className="faq-question" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                      <span>{faq.q}</span>
+                      <span className="faq-chevron">▾</span>
+                    </button>
+                    <div className="faq-answer">{faq.a}</div>
+                  </div>
+                </AnimSection>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── CTA BANNER ─── */}
       <AnimSection>
         <div style={{ margin: "0 32px 120px", maxWidth: 1200, marginLeft: "auto", marginRight: "auto" }}>
@@ -824,7 +1324,7 @@ export default function GmalinaCourtWebsite() {
             </div>
             {[
               { title: "Facilities", links: ["Accommodation", "Conference", "Restaurant", "Gym", "Swimming Pool"] },
-              { title: "Company", links: ["About Us", "Careers", "Press", "Partners"] },
+              { title: "Explore", links: ["Gallery", "Blog", "FAQ", "Attractions", "About Us"] },
               { title: "Contact", links: ["+265 998 00 19 09", "pijotrust2012@yahoo.com", "Facebook", "Tripadvisor"] },
             ].map(col => (
               <div key={col.title}>
