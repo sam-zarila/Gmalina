@@ -2,7 +2,49 @@
 
 import React, { useState, useEffect, useRef } from "react";
 
-const NAV_LINKS = ["About", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
+const NAV_LINKS = ["About", "Rooms", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
+
+// ── Lodge & Safari placeholder images ──
+const IMGS = {
+  // Hero & About
+  heroPool:      "https://images.unsplash.com/photo-1587502537745-84b86da1204f?w=1800&q=80",  // safari lodge pool at sunset
+  aboutLodge:    "https://images.unsplash.com/photo-1615729947596-a598e5de0ab3?w=900&q=80",   // thatched lodge exterior
+  aboutNature:   "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&q=80",   // African wildlife river
+  aboutDining:   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80",   // fine dining table
+  // Rooms / Suites
+  room1:         "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&q=80",   // luxury bedroom safari view
+  room2:         "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=900&q=80",   // premium hotel suite
+  room3:         "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=900&q=80",   // elegant lodge room
+  // Facilities
+  pool:          "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=700&q=80",   // infinity pool Africa view
+  restaurant:    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80",   // restaurant dining
+  conference:    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=80",   // conference room
+  gym:           "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=80",   // modern gym
+  bar:           "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=700&q=80",      // bar lounge
+  garden:        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80",   // lodge garden terrace
+  // Attractions / Nature
+  safari:        "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=900&q=80",      // elephant safari
+  lake:          "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=900&q=80",   // lake at sunset
+  liwonde:       "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&q=80",   // African river wildlife
+  sunset:        "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=80",   // African sunset
+  // Gallery
+  gal1:          "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",   // pool
+  gal2:          "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",   // bedroom
+  gal3:          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",   // dining
+  gal4:          "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80",      // safari
+  gal5:          "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",   // conference
+  gal6:          "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&q=80",   // room
+  gal7:          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",   // garden
+  gal8:          "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=800&q=80",      // bar
+  gal9:          "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80",   // sunrise
+  // Blog
+  blog1:         "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&q=80",   // wildlife
+  blog2:         "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",   // cuisine
+  blog3:         "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",   // corporate
+  blog4:         "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80",   // lake
+  blog5:         "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",   // pool morning
+  blog6:         "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",   // lodge room
+};
 
 interface GalleryItem {
   emoji: string;
@@ -10,18 +52,19 @@ interface GalleryItem {
   category: string;
   span: string;
   bg: string;
+  img: string;
 }
 
 const GALLERY_ITEMS: GalleryItem[] = [
-  { emoji: "🏊", label: "Swimming Pool", category: "Facilities", span: "wide", bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))" },
-  { emoji: "🛏️", label: "Deluxe Suite", category: "Rooms", span: "tall", bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))" },
-  { emoji: "🍽️", label: "Fine Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))" },
-  { emoji: "🦁", label: "Safari Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(180,140,30,0.25), rgba(50,40,0,0.6))" },
-  { emoji: "🎤", label: "Conference Hall", category: "Business", span: "normal", bg: "linear-gradient(135deg, rgba(60,80,180,0.2), rgba(10,10,50,0.6))" },
-  { emoji: "💪", label: "Fitness Center", category: "Facilities", span: "normal", bg: "linear-gradient(135deg, rgba(20,160,100,0.2), rgba(0,30,20,0.6))" },
-  { emoji: "🌿", label: "Garden Terrace", category: "Outdoors", span: "tall", bg: "linear-gradient(135deg, rgba(40,140,60,0.2), rgba(0,20,0,0.6))" },
-  { emoji: "🍹", label: "Poolside Bar", category: "Bar", span: "normal", bg: "linear-gradient(135deg, rgba(200,100,20,0.2), rgba(50,20,0,0.6))" },
-  { emoji: "🌅", label: "Sunrise Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(220,120,40,0.25), rgba(60,20,0,0.6))" },
+  { emoji: "🏊", label: "Swimming Pool", category: "Facilities", span: "wide", bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=900&q=80" },
+  { emoji: "🛏️", label: "Deluxe Suite", category: "Rooms", span: "tall", bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&q=80" },
+  { emoji: "🍽️", label: "Fine Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=80" },
+  { emoji: "🦁", label: "Safari Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(180,140,30,0.25), rgba(50,40,0,0.6))", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=900&q=80" },
+  { emoji: "🎤", label: "Conference Hall", category: "Business", span: "normal", bg: "linear-gradient(135deg, rgba(60,80,180,0.2), rgba(10,10,50,0.6))", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&q=80" },
+  { emoji: "💪", label: "Fitness Center", category: "Facilities", span: "normal", bg: "linear-gradient(135deg, rgba(20,160,100,0.2), rgba(0,30,20,0.6))", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80" },
+  { emoji: "🌿", label: "Garden Terrace", category: "Outdoors", span: "tall", bg: "linear-gradient(135deg, rgba(40,140,60,0.2), rgba(0,20,0,0.6))", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=900&q=80" },
+  { emoji: "🍹", label: "Poolside Bar", category: "Bar", span: "normal", bg: "linear-gradient(135deg, rgba(200,100,20,0.2), rgba(50,20,0,0.6))", img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=900&q=80" },
+  { emoji: "🌅", label: "Sunrise Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(220,120,40,0.25), rgba(60,20,0,0.6))", img: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=80" },
 ];
 
 const GALLERY_FILTERS = ["All", "Rooms", "Facilities", "Restaurant", "Nature", "Business", "Outdoors", "Bar"];
@@ -62,60 +105,12 @@ const FAQS = [
 ];
 
 const BLOGS = [
-  {
-    category: "Travel Guide",
-    title: "The Ultimate Safari Guide to Liwonde National Park",
-    excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.",
-    date: "Jan 15, 2025",
-    readTime: "8 min read",
-    emoji: "🦁",
-    color: "rgba(201,169,110,0.15)"
-  },
-  {
-    category: "Cuisine",
-    title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant",
-    excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi — and how we reimagine it on your plate.",
-    date: "Feb 3, 2025",
-    readTime: "5 min read",
-    emoji: "🍽️",
-    color: "rgba(20,160,140,0.12)"
-  },
-  {
-    category: "Events",
-    title: "How to Plan the Perfect Corporate Retreat in Malawi",
-    excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue — and how to plan it.",
-    date: "Feb 20, 2025",
-    readTime: "6 min read",
-    emoji: "💼",
-    color: "rgba(100,80,200,0.12)"
-  },
-  {
-    category: "Lifestyle",
-    title: "Lake Malawi: A Weekend Escape from the Lodge",
-    excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages worth visiting.",
-    date: "Mar 1, 2025",
-    readTime: "7 min read",
-    emoji: "🌊",
-    color: "rgba(20,100,180,0.12)"
-  },
-  {
-    category: "Wellness",
-    title: "Morning Rituals: How Our Guests Start the Perfect Day",
-    excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.",
-    date: "Mar 8, 2025",
-    readTime: "4 min read",
-    emoji: "🌅",
-    color: "rgba(220,120,40,0.12)"
-  },
-  {
-    category: "Culture",
-    title: "Exploring Malawian Craft Markets: A Buyer's Guide",
-    excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically and support local artisans.",
-    date: "Mar 14, 2025",
-    readTime: "5 min read",
-    emoji: "🏺",
-    color: "rgba(180,80,40,0.12)"
-  },
+  { category: "Travel Guide", title: "The Ultimate Safari Guide to Liwonde National Park", excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.", date: "Jan 15, 2025", readTime: "8 min read", emoji: "🦁", color: "rgba(201,169,110,0.15)", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80" },
+  { category: "Cuisine", title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant", excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi.", date: "Feb 3, 2025", readTime: "5 min read", emoji: "🍽️", color: "rgba(20,160,140,0.12)", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80" },
+  { category: "Events", title: "How to Plan the Perfect Corporate Retreat in Malawi", excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue.", date: "Feb 20, 2025", readTime: "6 min read", emoji: "💼", color: "rgba(100,80,200,0.12)", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
+  { category: "Lifestyle", title: "Lake Malawi: A Weekend Escape from the Lodge", excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages.", date: "Mar 1, 2025", readTime: "7 min read", emoji: "🌊", color: "rgba(20,100,180,0.12)", img: "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80" },
+  { category: "Wellness", title: "Morning Rituals: How Our Guests Start the Perfect Day", excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.", date: "Mar 8, 2025", readTime: "4 min read", emoji: "🌅", color: "rgba(220,120,40,0.12)", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80" },
+  { category: "Culture", title: "Exploring Malawian Craft Markets: A Buyer's Guide", excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically.", date: "Mar 14, 2025", readTime: "5 min read", emoji: "🏺", color: "rgba(180,80,40,0.12)", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80" },
 ];
 
 function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement | null>, boolean] {
@@ -149,12 +144,12 @@ function AnimSection({ children, className = "", delay = 0 }: AnimSectionProps) 
 }
 
 const FACILITIES = [
-  { icon: "🛏️", title: "Luxury Accommodation", desc: "Spacious suites with en-suite bathrooms, premium linens, smart TV, high-speed Wi-Fi, and panoramic views of Liwonde." },
-  { icon: "🎤", title: "Conference Facilities", desc: "Fully equipped halls for up to 100 guests, with 4K AV equipment, high-speed connectivity, and professional catering." },
-  { icon: "🍽️", title: "Bar & Restaurant", desc: "Award-winning cuisine blending local Malawian flavors with international gastronomy, paired with curated beverages." },
-  { icon: "💪", title: "Premium Gym", desc: "State-of-the-art fitness center with modern cardio, free weights, and personal training on request." },
-  { icon: "🏊", title: "Swimming Pool", desc: "Heated outdoor pool with sun loungers, poolside bar service, and stunning garden views." },
-  { icon: "🌿", title: "Garden & Terrace", desc: "Lush tropical gardens with private terraces—perfect for evening sundowners or romantic dinners." },
+  { icon: "🛏️", title: "Luxury Accommodation", desc: "Spacious suites with en-suite bathrooms, premium linens, smart TV, high-speed Wi-Fi, and panoramic views of Liwonde.", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&q=80" },
+  { icon: "🎤", title: "Conference Facilities", desc: "Fully equipped halls for up to 100 guests, with 4K AV equipment, high-speed connectivity, and professional catering.", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=80" },
+  { icon: "🍽️", title: "Bar & Restaurant", desc: "Award-winning cuisine blending local Malawian flavors with international gastronomy, paired with curated beverages.", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80" },
+  { icon: "💪", title: "Premium Gym", desc: "State-of-the-art fitness center with modern cardio, free weights, and personal training on request.", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=80" },
+  { icon: "🏊", title: "Swimming Pool", desc: "Heated outdoor pool with sun loungers, poolside bar service, and stunning garden views.", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=700&q=80" },
+  { icon: "🌿", title: "Garden & Terrace", desc: "Lush tropical gardens with private terraces—perfect for evening sundowners or romantic dinners.", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80" },
 ];
 
 const GUEST_TYPES = [
@@ -165,9 +160,9 @@ const GUEST_TYPES = [
 ];
 
 const ATTRACTIONS = [
-  { icon: "🦁", title: "Liwonde National Park", dist: "5 min away", desc: "One of Africa's premier safari destinations—home to elephants, hippos, lions, and over 400 bird species." },
-  { icon: "🌊", title: "Lake Malawi", dist: "45 min away", desc: "The 'Calendar Lake'—crystal-clear waters, sandy beaches, and world-class snorkeling in the lake of stars." },
-  { icon: "🏺", title: "Liwonde Town Markets", dist: "2 min away", desc: "Vibrant local markets brimming with handcrafted goods, fresh produce, and authentic Malawian culture." },
+  { icon: "🦁", title: "Liwonde National Park", dist: "5 min away", desc: "One of Africa's premier safari destinations—home to elephants, hippos, lions, and over 400 bird species.", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=700&q=80" },
+  { icon: "🌊", title: "Lake Malawi", dist: "45 min away", desc: "The 'Calendar Lake'—crystal-clear waters, sandy beaches, and world-class snorkeling in the lake of stars.", img: "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=700&q=80" },
+  { icon: "🏺", title: "Liwonde Town Markets", dist: "2 min away", desc: "Vibrant local markets brimming with handcrafted goods, fresh produce, and authentic Malawian culture.", img: "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=700&q=80" },
 ];
 
 const TESTIMONIALS = [
@@ -231,28 +226,40 @@ export default function GmalinaCourtWebsite() {
   // ── Theme tokens ──
   const t = {
     bg:          isDark ? "#08090a"              : "#f8f5f0",
-    bgAlt:       isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.025)",
-    bgCard:      isDark ? "rgba(255,255,255,0.03)"  : "rgba(255,255,255,0.85)",
-    bgCardHov:   isDark ? "rgba(201,169,110,0.07)"  : "rgba(201,169,110,0.12)",
-    border:      isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.08)",
-    borderGold:  isDark ? "rgba(201,169,110,0.2)"   : "rgba(201,169,110,0.4)",
-    borderTeal:  isDark ? "rgba(20,160,140,0.2)"    : "rgba(20,160,140,0.3)",
+    bgAlt:       isDark ? "rgba(255,255,255,0.015)" : "#ede8e0",
+    bgCard:      isDark ? "rgba(255,255,255,0.03)"  : "#ffffff",
+    bgCardHov:   isDark ? "rgba(201,169,110,0.07)"  : "rgba(201,169,110,0.15)",
+    border:      isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.1)",
+    borderGold:  isDark ? "rgba(201,169,110,0.2)"   : "rgba(201,169,110,0.45)",
+    borderTeal:  isDark ? "rgba(20,160,140,0.2)"    : "rgba(20,160,140,0.35)",
     text:        isDark ? "#f4f0ea"              : "#1a1208",
-    textMuted:   isDark ? "rgba(244,240,234,0.65)" : "rgba(26,18,8,0.65)",
-    textFaint:   isDark ? "rgba(244,240,234,0.4)"  : "rgba(26,18,8,0.4)",
-    navBg:       isDark ? "rgba(8,9,10,0.92)"    : "rgba(248,245,240,0.95)",
-    navBorder:   isDark ? "rgba(255,255,255,0.05)": "rgba(0,0,0,0.08)",
-    inputBg:     isDark ? "rgba(255,255,255,0.04)": "rgba(0,0,0,0.04)",
-    inputBorder: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)",
-    statsBg:     isDark ? "rgba(201,169,110,0.06)": "rgba(201,169,110,0.08)",
+    textMuted:   isDark ? "rgba(244,240,234,0.65)" : "#3d2e1e",
+    textFaint:   isDark ? "rgba(244,240,234,0.4)"  : "#7a6552",
+    textHero:    isDark ? "rgba(244,240,234,0.65)" : "#3d2e1e",
+    navBg:       isDark ? "rgba(8,9,10,0.92)"    : "rgba(248,245,240,0.97)",
+    navBorder:   isDark ? "rgba(255,255,255,0.05)": "rgba(0,0,0,0.1)",
+    inputBg:     isDark ? "rgba(255,255,255,0.04)": "#ffffff",
+    inputBorder: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)",
+    statsBg:     isDark ? "rgba(201,169,110,0.06)": "rgba(201,169,110,0.1)",
+    statsText:   isDark ? "rgba(244,240,234,0.5)" : "#5a4030",
+    sectionBorder: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.07)",
     meshBg:      isDark
       ? "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.1) 0%, transparent 60%)"
-      : "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.12) 0%, transparent 60%)",
-    mobileMenuBg: isDark ? "rgba(8,9,10,0.97)"  : "rgba(248,245,240,0.98)",
-    faqBg:       isDark ? "rgba(255,255,255,0.03)": "rgba(255,255,255,0.7)",
+      : "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.2) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.14) 0%, transparent 60%)",
+    mobileMenuBg: isDark ? "rgba(8,9,10,0.97)"  : "rgba(248,245,240,0.99)",
+    faqBg:       isDark ? "rgba(255,255,255,0.03)": "#ffffff",
     faqHov:      isDark ? "rgba(201,169,110,0.05)": "rgba(201,169,110,0.08)",
-    faqOpen:     isDark ? "rgba(201,169,110,0.07)": "rgba(201,169,110,0.12)",
+    faqOpen:     isDark ? "rgba(201,169,110,0.07)": "rgba(201,169,110,0.1)",
+    badgeBg:     isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)",
+    badgeBorder: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)",
+    badgeText:   isDark ? "rgba(244,240,234,0.45)" : "#5a4030",
     scrollTrack: isDark ? "#08090a"              : "#f8f5f0",
+    gridLine:    isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.04)",
+    footerBg:    isDark ? "#06070a"              : "#e8e2d9",
+    ctaBg:       isDark ? "linear-gradient(135deg, rgba(201,169,110,0.12) 0%, rgba(20,160,140,0.1) 100%)" : "linear-gradient(135deg, rgba(201,169,110,0.18) 0%, rgba(20,160,140,0.12) 100%)",
+    ctaBorder:   isDark ? "rgba(201,169,110,0.2)" : "rgba(201,169,110,0.35)",
+    attractionBg: isDark ? "rgba(255,255,255,0.03)" : "#ffffff",
+    testimonialBg: isDark ? "rgba(201,169,110,0.05)" : "rgba(201,169,110,0.08)",
   };
 
   return (
@@ -477,7 +484,6 @@ export default function GmalinaCourtWebsite() {
           transition: color 0.3s;
         }
         .footer-link:hover { color: #c9a96e; }
-
         /* Gallery */
         .gallery-filter-btn {
           font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
@@ -620,12 +626,17 @@ export default function GmalinaCourtWebsite() {
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
         .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
-        /* ── RESPONSIVE ── */
+        /* Mobile right group — hidden on desktop, shown on mobile */
+        .mobile-theme-toggle { display: none !important; }
+        .mobile-book-btn-nav { display: none !important; }
+
         @media (max-width: 900px) {
           .grid-4 { grid-template-columns: 1fr 1fr; }
           .grid-3 { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 768px) {
+          .mobile-theme-toggle { display: flex !important; }
+          .mobile-book-btn-nav { display: inline-block !important; }
           .hamburger { display: flex !important; }
           .desktop-nav { display: none !important; }
           .hero-badges { display: none !important; }
@@ -717,10 +728,10 @@ export default function GmalinaCourtWebsite() {
 
         {/* Mobile right side */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" style={{ display: isMobile ? "flex" : "none" }}>
+          <button className="theme-toggle mobile-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
             <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
           </button>
-          <a href="#contact" className="btn-primary" style={{ padding: "9px 18px", fontSize: 12, display: isMobile ? "inline-block" : "none" }}>Book Now</a>
+          <a href="#contact" className="btn-primary mobile-book-btn-nav" style={{ padding: "9px 18px", fontSize: 12 }}>Book Now</a>
           <button
             className={`hamburger ${menuOpen ? "open" : ""}`}
             onClick={() => setMenuOpen(o => !o)}
@@ -743,13 +754,22 @@ export default function GmalinaCourtWebsite() {
 
       {/* ─── HERO ─── */}
       <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", position: "relative", overflow: "hidden", paddingTop: 72, background: t.bg, backgroundImage: t.meshBg }}>
+        {/* Hero background image */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0,
+          backgroundImage: `url(${IMGS.heroPool})`,
+          backgroundSize: "cover", backgroundPosition: "center",
+          opacity: isDark ? 0.18 : 0.1,
+          transition: "opacity 0.4s"
+        }} />
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, background: isDark ? "linear-gradient(to right, rgba(8,9,10,0.97) 45%, rgba(8,9,10,0.5) 100%)" : "linear-gradient(to right, rgba(248,245,240,0.97) 45%, rgba(248,245,240,0.6) 100%)" }} />
         <div className="hero-orb-1" />
         <div className="hero-orb-2" />
 
         {/* Subtle grid pattern */}
         <div style={{
           position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+          backgroundImage: `linear-gradient(${t.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${t.gridLine} 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
           pointerEvents: "none"
         }} />
@@ -774,7 +794,7 @@ export default function GmalinaCourtWebsite() {
               Heart of Malawi
             </h1>
 
-            <p style={{ fontSize: 18, color: "rgba(244,240,234,0.65)", lineHeight: 1.8, maxWidth: 560, marginBottom: 48, fontFamily: "'DM Sans', sans-serif", fontWeight: 300 }}>
+            <p style={{ fontSize: 18, color: t.textHero, lineHeight: 1.8, maxWidth: 560, marginBottom: 48, fontFamily: "'DM Sans', sans-serif", fontWeight: 300 }}>
               Premier lodge on M5 Road, Liwonde — where world-class hospitality, 
               safari adventures, and refined comfort converge at the gateway to 
               Liwonde National Park.
@@ -794,7 +814,7 @@ export default function GmalinaCourtWebsite() {
               ].map(s => (
                 <div key={s.l}>
                   <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Playfair Display', serif", color: "#c9a96e" }}>{s.n}</div>
-                  <div style={{ fontSize: 13, color: "rgba(244,240,234,0.5)", fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>{s.l}</div>
+                  <div style={{ fontSize: 13, color: t.statsText, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -808,8 +828,8 @@ export default function GmalinaCourtWebsite() {
               { icon: "📶", t: "High-Speed WiFi", s: "Throughout" },
             ].map((b, i) => (
               <div key={i} style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: t.badgeBg,
+                border: `1px solid ${t.badgeBorder}`,
                 borderRadius: 16, padding: "16px 20px",
                 display: "flex", alignItems: "center", gap: 14,
                 backdropFilter: "blur(16px)",
@@ -817,8 +837,8 @@ export default function GmalinaCourtWebsite() {
               }}>
                 <span style={{ fontSize: 24 }}>{b.icon}</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{b.t}</div>
-                  <div style={{ fontSize: 11, color: "rgba(244,240,234,0.45)", fontFamily: "'DM Sans', sans-serif" }}>{b.s}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", color: t.text }}>{b.t}</div>
+                  <div style={{ fontSize: 11, color: t.badgeText, fontFamily: "'DM Sans', sans-serif" }}>{b.s}</div>
                 </div>
               </div>
             ))}
@@ -839,12 +859,108 @@ export default function GmalinaCourtWebsite() {
             {STATS.map((s, i) => (
               <div key={i} className="stat-item">
                 <div style={{ fontSize: 36, fontWeight: 800, fontFamily: "'Playfair Display', serif" }} className="gold-text">{s.value}</div>
-                <div style={{ fontSize: 13, color: "rgba(244,240,234,0.5)", fontFamily: "'DM Sans', sans-serif", marginTop: 4, letterSpacing: "0.05em" }}>{s.label}</div>
+                <div style={{ fontSize: 13, color: t.statsText, fontFamily: "'DM Sans', sans-serif", marginTop: 4, letterSpacing: "0.05em" }}>{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* ─── ROOMS SHOWCASE ─── */}
+      <section id="rooms" style={{ padding: "120px 32px", background: t.bgAlt, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }} className="section-pad">
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <AnimSection>
+            <div style={{ textAlign: "center", marginBottom: 64 }}>
+              <span className="section-label">Our Rooms & Suites</span>
+              <div className="divider-line" style={{ margin: "16px auto 24px" }} />
+              <h2 style={{ fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 800, letterSpacing: "-0.02em" }}>
+                Spaces Designed for<br /><span className="gold-text">Perfect Rest</span>
+              </h2>
+            </div>
+          </AnimSection>
+
+          {/* Featured large room */}
+          <AnimSection>
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0,
+              borderRadius: 28, overflow: "hidden",
+              border: `1px solid ${t.borderGold}`,
+              marginBottom: 24,
+              boxShadow: isDark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 24px 60px rgba(0,0,0,0.1)"
+            }} className="blog-featured">
+              <div style={{ height: 480, overflow: "hidden", position: "relative" }} className="blog-featured-img">
+                <img src={IMGS.room1} alt="Deluxe Suite" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(0,0,0,0.2), transparent)" }} />
+              </div>
+              <div style={{
+                background: t.bgCard, padding: "48px 52px",
+                display: "flex", flexDirection: "column", justifyContent: "center"
+              }}>
+                <span className="tag-pill">Featured Suite</span>
+                <h3 style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2, marginBottom: 20, letterSpacing: "-0.02em", color: t.text }}>
+                  The Liwonde<br /><span className="gold-text">Deluxe Suite</span>
+                </h3>
+                <p style={{ color: t.textMuted, lineHeight: 1.8, fontFamily: "'DM Sans', sans-serif", fontSize: 16, marginBottom: 32 }}>
+                  Our signature suite features a king-size bed with premium Egyptian cotton, a private balcony overlooking the gardens, rain shower, smart TV, and personalised butler service.
+                </p>
+                <div style={{ display: "flex", gap: 20, marginBottom: 36, flexWrap: "wrap" }}>
+                  {["King Bed", "En-suite Bath", "Garden View", "Free WiFi"].map(f => (
+                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ color: "#c9a96e", fontSize: 13 }}>✦</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: t.textMuted }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="#contact" className="btn-primary" style={{ alignSelf: "flex-start" }}>Book This Suite →</a>
+              </div>
+            </div>
+          </AnimSection>
+
+          {/* Two smaller room cards */}
+          <div className="grid-2">
+            {[
+              { img: IMGS.room2, title: "Classic Room", tag: "Standard", features: ["Queen Bed", "AC", "Smart TV"], desc: "Elegant comfort with all essentials — ideal for solo and business travellers seeking quality at every touch." },
+              { img: IMGS.room3, title: "Family Suite", tag: "Family", features: ["2 Bedrooms", "Kitchenette", "Garden Patio"], desc: "Spacious suite with two bedrooms and a shared living area — the perfect home away from home for families." },
+            ].map((r, i) => (
+              <AnimSection key={i} delay={i * 0.15}>
+                <div style={{
+                  borderRadius: 24, overflow: "hidden",
+                  border: `1px solid ${t.border}`,
+                  background: t.bgCard,
+                  transition: "all 0.4s",
+                  boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.2)" : "0 8px 32px rgba(0,0,0,0.06)"
+                }}>
+                  <div style={{ height: 260, overflow: "hidden", position: "relative" }}>
+                    <img src={r.img} alt={r.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
+                      onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                    />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.4))" }} />
+                    <div style={{
+                      position: "absolute", top: 14, left: 14,
+                      background: "rgba(201,169,110,0.85)", backdropFilter: "blur(8px)",
+                      borderRadius: 100, padding: "4px 14px",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#1a1208", letterSpacing: "0.08em"
+                    }}>{r.tag}</div>
+                  </div>
+                  <div style={{ padding: "28px 32px 32px" }}>
+                    <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 10, color: t.text }}>{r.title}</h3>
+                    <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>{r.desc}</p>
+                    <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+                      {r.features.map(f => (
+                        <span key={f} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ color: "#c9a96e" }}>✦</span> {f}
+                        </span>
+                      ))}
+                    </div>
+                    <a href="#contact" style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>Reserve Room →</a>
+                  </div>
+                </div>
+              </AnimSection>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ─── ABOUT ─── */}
       <section id="about" style={{ padding: "120px 32px", maxWidth: 1200, margin: "0 auto", background: t.bg }} className="section-pad">
@@ -856,12 +972,12 @@ export default function GmalinaCourtWebsite() {
               <h2 style={{ fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.15, fontWeight: 800, marginBottom: 24, letterSpacing: "-0.02em" }}>
                 The Pinnacle of<br />Malawian Hospitality
               </h2>
-              <p style={{ color: "rgba(244,240,234,0.65)", lineHeight: 1.9, marginBottom: 24, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300 }}>
+              <p style={{ color: t.textMuted, lineHeight: 1.9, marginBottom: 24, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300 }}>
                 Nestled along M5 Road beside Fcapital Bank in the heart of Liwonde, 
                 Gmalina Court stands as Malawi's most distinguished lodge—a seamless 
                 fusion of modern luxury and authentic African warmth.
               </p>
-              <p style={{ color: "rgba(244,240,234,0.65)", lineHeight: 1.9, marginBottom: 40, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300 }}>
+              <p style={{ color: t.textMuted, lineHeight: 1.9, marginBottom: 40, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300 }}>
                 Whether you're here for business, a family safari, or a romantic 
                 escape, our meticulously crafted spaces and attentive team ensure 
                 every moment exceeds expectation.
@@ -870,42 +986,59 @@ export default function GmalinaCourtWebsite() {
                 {[["Business", "✓"], ["Leisure", "✓"], ["Events", "✓"], ["Dining", "✓"]].map(([l, c]) => (
                   <div key={l} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ color: "#14a08c", fontWeight: 600 }}>{c}</span>
-                    <span style={{ fontSize: 14, color: "rgba(244,240,234,0.6)", fontFamily: "'DM Sans', sans-serif" }}>{l}</span>
+                    <span style={{ fontSize: 14, color: t.textMuted, fontFamily: "'DM Sans', sans-serif" }}>{l}</span>
                   </div>
                 ))}
               </div>
               <a href="#contact" className="btn-primary">Get in Touch →</a>
             </div>
 
-            {/* Visual collage */}
-            <div className="about-visual" style={{ position: "relative", height: 480 }}>
+            {/* Visual collage with real images */}
+            <div className="about-visual" style={{ position: "relative", height: 520 }}>
+              {/* Main large image */}
               <div style={{
                 position: "absolute", top: 0, left: 0,
                 width: "70%", height: "65%",
-                background: "linear-gradient(135deg, rgba(201,169,110,0.15), rgba(20,160,140,0.1))",
-                border: "1px solid rgba(201,169,110,0.2)",
-                borderRadius: 24,
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                fontSize: 72
-              }}>🏛️</div>
+                borderRadius: 24, overflow: "hidden",
+                border: `1px solid ${t.borderGold}`,
+                boxShadow: isDark ? "0 24px 60px rgba(0,0,0,0.5)" : "0 24px 60px rgba(0,0,0,0.12)"
+              }}>
+                <img src={IMGS.aboutLodge} alt="Gmalina Court Lodge" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4))" }} />
+              </div>
+              {/* Bottom right image */}
               <div style={{
                 position: "absolute", bottom: 0, right: 0,
-                width: "60%", height: "55%",
-                background: "linear-gradient(135deg, rgba(20,160,140,0.12), rgba(201,169,110,0.1))",
-                border: "1px solid rgba(20,160,140,0.2)",
-                borderRadius: 24,
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                fontSize: 64
-              }}>🌿</div>
-              <div style={{
-                position: "absolute", bottom: "20%", left: "5%",
-                background: "rgba(201,169,110,0.1)",
-                border: "1px solid rgba(201,169,110,0.25)",
-                borderRadius: 16, padding: "16px 20px",
-                backdropFilter: "blur(16px)"
+                width: "58%", height: "52%",
+                borderRadius: 24, overflow: "hidden",
+                border: `1px solid ${t.borderTeal}`,
+                boxShadow: isDark ? "0 16px 40px rgba(0,0,0,0.4)" : "0 16px 40px rgba(0,0,0,0.1)"
               }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700 }} className="gold-text">Est. in Liwonde</div>
-                <div style={{ fontSize: 12, color: "rgba(244,240,234,0.5)", fontFamily: "'DM Sans', sans-serif" }}>Machinga, Malawi</div>
+                <img src={IMGS.aboutNature} alt="Malawi nature" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.35))" }} />
+              </div>
+              {/* Small dining image */}
+              <div style={{
+                position: "absolute", top: "38%", right: "36%",
+                width: "32%", height: "28%",
+                borderRadius: 16, overflow: "hidden",
+                border: `2px solid ${t.bg}`,
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.6)" : "0 8px 32px rgba(0,0,0,0.15)",
+                zIndex: 2
+              }}>
+                <img src={IMGS.aboutDining} alt="Fine dining" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              {/* Badge overlay */}
+              <div style={{
+                position: "absolute", bottom: "20%", left: "3%",
+                background: isDark ? "rgba(8,9,10,0.85)" : "rgba(255,255,255,0.92)",
+                border: `1px solid ${t.borderGold}`,
+                borderRadius: 16, padding: "14px 18px",
+                backdropFilter: "blur(16px)", zIndex: 3,
+                boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.4)" : "0 8px 24px rgba(0,0,0,0.1)"
+              }}>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700 }} className="gold-text">Est. in Liwonde</div>
+                <div style={{ fontSize: 12, color: t.statsText, fontFamily: "'DM Sans', sans-serif" }}>Machinga, Malawi</div>
               </div>
             </div>
           </div>
@@ -922,7 +1055,7 @@ export default function GmalinaCourtWebsite() {
               <h2 style={{ fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 800, letterSpacing: "-0.02em" }}>
                 Everything You<br /><span className="gold-text">Could Desire</span>
               </h2>
-              <p style={{ color: "rgba(244,240,234,0.55)", marginTop: 20, maxWidth: 480, margin: "20px auto 0", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8 }}>
+              <p style={{ color: t.textMuted, marginTop: 20, maxWidth: 480, margin: "20px auto 0", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8 }}>
                 Six world-class amenities designed to make your stay unforgettable, from sunrise to sunset.
               </p>
             </div>
@@ -931,10 +1064,21 @@ export default function GmalinaCourtWebsite() {
           <div className="grid-3">
             {FACILITIES.map((f, i) => (
               <AnimSection key={i} delay={i * 0.08}>
-                <div className="facility-card">
-                  <div style={{ fontSize: 40, marginBottom: 20 }}>{f.icon}</div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, letterSpacing: "-0.01em" }}>{f.title}</h3>
-                  <p style={{ color: "rgba(244,240,234,0.55)", lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 300 }}>{f.desc}</p>
+                <div className="facility-card" style={{ padding: 0, overflow: "hidden" }}>
+                  {/* Card image */}
+                  <div style={{ height: 200, overflow: "hidden", position: "relative" }}>
+                    <img src={f.img} alt={f.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
+                      onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                    />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.45))" }} />
+                    <div style={{ position: "absolute", bottom: 14, left: 16, fontSize: 28 }}>{f.icon}</div>
+                  </div>
+                  {/* Card text */}
+                  <div style={{ padding: "24px 28px 28px" }}>
+                    <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, letterSpacing: "-0.01em", color: t.text }}>{f.title}</h3>
+                    <p style={{ color: t.textMuted, lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 300 }}>{f.desc}</p>
+                  </div>
                 </div>
               </AnimSection>
             ))}
@@ -962,7 +1106,7 @@ export default function GmalinaCourtWebsite() {
                   <div className="tag-pill">{g.tag}</div>
                   <div style={{ fontSize: 36, marginBottom: 16 }}>{g.icon}</div>
                   <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 12 }}>{g.title}</h3>
-                  <p style={{ color: "rgba(244,240,234,0.55)", lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 300, marginBottom: 20 }}>{g.desc}</p>
+                  <p style={{ color: t.textMuted, lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 300, marginBottom: 20 }}>{g.desc}</p>
                   <a href="#contact" style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
                     Learn more <span style={{ transition: "transform 0.3s" }}>→</span>
                   </a>
@@ -990,28 +1134,35 @@ export default function GmalinaCourtWebsite() {
             {ATTRACTIONS.map((a, i) => (
               <AnimSection key={i} delay={i * 0.12}>
                 <div style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 24, padding: "40px 32px",
+                  background: t.attractionBg,
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 24, overflow: "hidden",
                   transition: "all 0.4s",
-                  position: "relative", overflow: "hidden"
+                  position: "relative"
                 }}>
-                  <div style={{
-                    position: "absolute", top: 0, right: 0,
-                    width: 120, height: 120,
-                    background: "radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%)",
-                    borderRadius: "0 0 0 100%"
-                  }} />
-                  <div style={{ fontSize: 52, marginBottom: 24 }}>{a.icon}</div>
-                  <div style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    background: "rgba(20,160,140,0.1)", border: "1px solid rgba(20,160,140,0.2)",
-                    borderRadius: 100, padding: "4px 12px", marginBottom: 16
-                  }}>
-                    <span style={{ fontSize: 11, color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>📍 {a.dist}</span>
+                  {/* Attraction image */}
+                  <div style={{ height: 220, overflow: "hidden", position: "relative" }}>
+                    <img src={a.img} alt={a.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
+                      onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                    />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))" }} />
+                    {/* Distance badge */}
+                    <div style={{
+                      position: "absolute", top: 14, right: 14,
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 100, padding: "5px 12px"
+                    }}>
+                      <span style={{ fontSize: 11, color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>📍 {a.dist}</span>
+                    </div>
                   </div>
-                  <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 14 }}>{a.title}</h3>
-                  <p style={{ color: "rgba(244,240,234,0.55)", lineHeight: 1.8, fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 300 }}>{a.desc}</p>
+                  <div style={{ padding: "28px 28px 32px" }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>{a.icon}</div>
+                    <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, color: t.text }}>{a.title}</h3>
+                    <p style={{ color: t.textMuted, lineHeight: 1.8, fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 300 }}>{a.desc}</p>
+                  </div>
                 </div>
               </AnimSection>
             ))}
@@ -1035,7 +1186,7 @@ export default function GmalinaCourtWebsite() {
           {/* Featured testimonial */}
           <div style={{ maxWidth: 800, margin: "0 auto 48px", textAlign: "center" }}>
             <div style={{
-              background: isDark ? "rgba(201,169,110,0.05)" : "rgba(201,169,110,0.07)",
+              background: t.testimonialBg,
               border: `1px solid ${t.borderGold}`,
               borderRadius: 28, padding: "48px",
               transition: "all 0.6s ease",
@@ -1045,7 +1196,7 @@ export default function GmalinaCourtWebsite() {
               <p style={{
                 fontSize: "clamp(18px, 2.5vw, 24px)",
                 lineHeight: 1.7, fontFamily: "'Playfair Display', serif",
-                fontStyle: "italic", color: "rgba(244,240,234,0.9)",
+                fontStyle: "italic", color: t.text,
                 marginBottom: 32, transition: "all 0.5s"
               }}>
                 {TESTIMONIALS[activeTestimonial].quote}
@@ -1055,8 +1206,8 @@ export default function GmalinaCourtWebsite() {
                   {TESTIMONIALS[activeTestimonial].author[0]}
                 </div>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 15 }}>{TESTIMONIALS[activeTestimonial].author}</div>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(244,240,234,0.45)" }}>{TESTIMONIALS[activeTestimonial].location}</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 15, color: t.text }}>{TESTIMONIALS[activeTestimonial].author}</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint }}>{TESTIMONIALS[activeTestimonial].location}</div>
                 </div>
                 <div style={{ marginLeft: 16, color: "#c9a96e", fontSize: 16 }}>{"★".repeat(TESTIMONIALS[activeTestimonial].rating)}</div>
               </div>
@@ -1100,19 +1251,24 @@ export default function GmalinaCourtWebsite() {
                 <div
                   className="gallery-item"
                   style={{
-                    background: item.bg,
                     height: item.span === "tall" ? 340 : item.span === "wide" ? 220 : 240,
                     marginBottom: 16,
                     breakInside: "avoid",
-                    display: "flex", alignItems: "center", justifyContent: "center"
+                    position: "relative",
+                    overflow: "hidden"
                   }}
                   onClick={() => setLightbox(item)}
                 >
-                  <div style={{ textAlign: "center" }}>
-                    <div className="gallery-icon">{item.emoji}</div>
+                  {/* Real photo background */}
+                  <img src={item.img} alt={item.label} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }} />
+                  {/* Gradient overlay */}
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.65))" }} />
+                  {/* Bottom label always visible */}
+                  <div style={{ position: "absolute", bottom: 16, left: 16, right: 16 }}>
+                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 700, color: "#fff" }}>{item.label}</div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.65)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 3 }}>{item.category}</div>
                   </div>
                   <div className="gallery-overlay">
-                    <div style={{ fontSize: 48 }}>{item.emoji}</div>
                     <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: "#fff" }}>{item.label}</div>
                     <div style={{
                       fontFamily: "'DM Sans', sans-serif", fontSize: 12,
@@ -1131,33 +1287,41 @@ export default function GmalinaCourtWebsite() {
         {lightbox && (
           <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
             <div style={{
-              background: isDark ? "rgba(14,16,18,0.95)" : "rgba(255,252,248,0.98)",
+              background: isDark ? "rgba(14,16,18,0.97)" : "rgba(255,252,248,0.98)",
               border: `1px solid ${t.border}`,
-              borderRadius: 28, padding: "64px 80px",
-              textAlign: "center", maxWidth: 480,
+              borderRadius: 28, overflow: "hidden",
+              maxWidth: 560, width: "90%",
               position: "relative", color: t.text
             }} onClick={e => e.stopPropagation()}>
-              <button onClick={() => setLightbox(null)} style={{
-                position: "absolute", top: 20, right: 20,
-                background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
-                color: "#f4f0ea", width: 36, height: 36, borderRadius: "50%",
-                cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center"
-              }}>×</button>
-              <div style={{ fontSize: 96, marginBottom: 24 }}>{lightbox.emoji}</div>
-              <h3 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>{lightbox.label}</h3>
-              <div style={{
-                display: "inline-flex",
-                background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.2)",
-                borderRadius: 100, padding: "4px 16px",
-                fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#c9a96e",
-                letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600
-              }}>{lightbox.category}</div>
-              <p style={{ marginTop: 20, color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.7, fontSize: 15 }}>
-                Experience the finest {lightbox.label.toLowerCase()} at Gmalina Court — crafted to exceed every expectation.
-              </p>
-              <a href="#contact" className="btn-primary" style={{ marginTop: 32, display: "inline-block" }} onClick={() => setLightbox(null)}>
-                Book Now →
-              </a>
+              {/* Image */}
+              <div style={{ height: 280, overflow: "hidden", position: "relative" }}>
+                <img src={lightbox.img} alt={lightbox.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))" }} />
+                <button onClick={() => setLightbox(null)} style={{
+                  position: "absolute", top: 16, right: 16,
+                  background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#fff", width: 36, height: 36, borderRadius: "50%",
+                  cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center",
+                  backdropFilter: "blur(8px)"
+                }}>×</button>
+              </div>
+              {/* Content */}
+              <div style={{ padding: "32px 40px 40px", textAlign: "center" }}>
+                <h3 style={{ fontSize: 26, fontWeight: 800, marginBottom: 10, color: t.text }}>{lightbox.label}</h3>
+                <div style={{
+                  display: "inline-flex",
+                  background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.2)",
+                  borderRadius: 100, padding: "4px 16px",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#c9a96e",
+                  letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600
+                }}>{lightbox.category}</div>
+                <p style={{ marginTop: 16, color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.7, fontSize: 15 }}>
+                  Experience the finest {lightbox.label.toLowerCase()} at Gmalina Court — crafted to exceed every expectation.
+                </p>
+                <a href="#contact" className="btn-primary" style={{ marginTop: 24, display: "inline-block" }} onClick={() => setLightbox(null)}>
+                  Book Now →
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -1187,30 +1351,28 @@ export default function GmalinaCourtWebsite() {
           {(activeBlogTag === "All" || BLOGS[0].category === activeBlogTag) && (
             <AnimSection>
               <div style={{
-                background: "rgba(201,169,110,0.06)",
-                border: "1px solid rgba(201,169,110,0.18)",
+                background: t.bgCard,
+                border: `1px solid ${t.borderGold}`,
                 borderRadius: 28,
-                padding: "0",
                 overflow: "hidden",
                 display: "grid", gridTemplateColumns: "1fr 1.2fr",
                 marginBottom: 24,
                 cursor: "pointer",
-                transition: "all 0.4s"
+                transition: "all 0.4s",
+                boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.25)" : "0 8px 32px rgba(0,0,0,0.08)"
               }} className="blog-featured">
-                <div className="blog-featured-img" style={{
-                  background: BLOGS[0].color,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 120, padding: "60px",
-                  borderRight: "1px solid rgba(201,169,110,0.12)"
-                }}>{BLOGS[0].emoji}</div>
+                <div className="blog-featured-img" style={{ overflow: "hidden", position: "relative", minHeight: 320 }}>
+                  <img src={BLOGS[0].img} alt={BLOGS[0].title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))" }} />
+                  <div style={{
+                    position: "absolute", top: 16, left: 16,
+                    background: "rgba(201,169,110,0.9)", backdropFilter: "blur(8px)",
+                    borderRadius: 100, padding: "5px 14px",
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#1a1208", letterSpacing: "0.08em"
+                  }}>⭐ Featured</div>
+                </div>
                 <div style={{ padding: "52px 48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20 }}>
-                    <span style={{
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700,
-                      letterSpacing: "0.15em", textTransform: "uppercase", color: "#c9a96e",
-                      background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.25)",
-                      padding: "4px 12px", borderRadius: 100
-                    }}>⭐ Featured</span>
+                  <div style={{ marginBottom: 20 }}>
                     <span style={{
                       fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600,
                       letterSpacing: "0.1em", textTransform: "uppercase", color: "#14a08c",
@@ -1218,12 +1380,12 @@ export default function GmalinaCourtWebsite() {
                       padding: "4px 12px", borderRadius: 100
                     }}>{BLOGS[0].category}</span>
                   </div>
-                  <h3 style={{ fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em" }}>{BLOGS[0].title}</h3>
-                  <p style={{ color: "rgba(244,240,234,0.6)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 15, fontWeight: 300, marginBottom: 28 }}>{BLOGS[0].excerpt}</p>
+                  <h3 style={{ fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em", color: t.text }}>{BLOGS[0].title}</h3>
+                  <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 15, fontWeight: 300, marginBottom: 28 }}>{BLOGS[0].excerpt}</p>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", gap: 20 }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(244,240,234,0.4)" }}>📅 {BLOGS[0].date}</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(244,240,234,0.4)" }}>⏱ {BLOGS[0].readTime}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>📅 {BLOGS[0].date}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>⏱ {BLOGS[0].readTime}</span>
                     </div>
                     <span className="blog-read-more">Read Article →</span>
                   </div>
@@ -1237,22 +1399,26 @@ export default function GmalinaCourtWebsite() {
             {BLOGS.filter((b, i) => (i > 0 || activeBlogTag !== "All") && (activeBlogTag === "All" || b.category === activeBlogTag)).map((post, i) => (
               <AnimSection key={post.title} delay={i * 0.08}>
                 <div className="blog-card">
-                  <div style={{
-                    background: post.color,
-                    height: 180, display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    fontSize: 72, borderBottom: "1px solid rgba(255,255,255,0.05)"
-                  }}>{post.emoji}</div>
-                  <div style={{ padding: "28px 28px 32px", display: "flex", flexDirection: "column", gap: 12, flexGrow: 1 }}>
+                  <div style={{ height: 200, overflow: "hidden", position: "relative" }}>
+                    <img src={post.img} alt={post.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
+                      onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                    />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.45))" }} />
                     <span style={{
+                      position: "absolute", top: 12, left: 12,
                       fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700,
-                      letterSpacing: "0.12em", textTransform: "uppercase", color: "#14a08c"
+                      letterSpacing: "0.12em", textTransform: "uppercase", color: "#14a08c",
+                      background: isDark ? "rgba(8,9,10,0.8)" : "rgba(255,255,255,0.9)",
+                      backdropFilter: "blur(6px)", padding: "4px 10px", borderRadius: 100
                     }}>{post.category}</span>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.01em" }}>{post.title}</h3>
-                    <p style={{ color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 14, fontWeight: 300 }}>{post.excerpt}</p>
+                  </div>
+                  <div style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 10, flexGrow: 1 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, letterSpacing: "-0.01em", color: t.text }}>{post.title}</h3>
+                    <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 14, fontWeight: 300 }}>{post.excerpt}</p>
                     <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(244,240,234,0.35)" }}>📅 {post.date}</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(244,240,234,0.35)" }}>⏱ {post.readTime}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint }}>📅 {post.date}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint }}>⏱ {post.readTime}</span>
                     </div>
                     <span className="blog-read-more" style={{ paddingTop: 8 }}>Read More →</span>
                   </div>
@@ -1274,7 +1440,7 @@ export default function GmalinaCourtWebsite() {
                 <h2 style={{ fontSize: "clamp(32px, 3.5vw, 52px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 24 }}>
                   Questions<br /><span className="gold-text">Answered</span>
                 </h2>
-                <p style={{ color: "rgba(244,240,234,0.55)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, fontSize: 15, fontWeight: 300, marginBottom: 40 }}>
+                <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, fontSize: 15, fontWeight: 300, marginBottom: 40 }}>
                   Can't find what you're looking for? Our concierge team is available 24/7.
                 </p>
                 <a href="#contact" className="btn-primary">Ask a Question →</a>
@@ -1317,21 +1483,21 @@ export default function GmalinaCourtWebsite() {
       <AnimSection>
         <div style={{ margin: "0 32px 120px", maxWidth: 1200, marginLeft: "auto", marginRight: "auto" }}>
           <div style={{
-            background: "linear-gradient(135deg, rgba(201,169,110,0.12) 0%, rgba(20,160,140,0.1) 100%)",
-            border: "1px solid rgba(201,169,110,0.2)",
+            background: t.ctaBg,
+            border: `1px solid ${t.ctaBorder}`,
             borderRadius: 32, padding: "72px 64px",
             textAlign: "center",
             position: "relative", overflow: "hidden"
           }} className="cta-pad">
             <div style={{
               position: "absolute", inset: 0,
-              backgroundImage: "linear-gradient(rgba(201,169,110,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(201,169,110,0.03) 1px, transparent 1px)",
+              backgroundImage: `linear-gradient(${t.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${t.gridLine} 1px, transparent 1px)`,
               backgroundSize: "40px 40px"
             }} />
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 20, position: "relative" }}>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 20, position: "relative", color: t.text }}>
               Ready for an<br /><span className="gold-text">Unforgettable Stay?</span>
             </h2>
-            <p style={{ color: "rgba(244,240,234,0.6)", maxWidth: 480, margin: "0 auto 40px", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, position: "relative" }}>
+            <p style={{ color: t.textMuted, maxWidth: 480, margin: "0 auto 40px", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, position: "relative" }}>
               Reserve your room today and experience the finest hospitality in the heart of Malawi.
             </p>
             <div className="cta-buttons" style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
@@ -1372,7 +1538,7 @@ export default function GmalinaCourtWebsite() {
                     }}>{c.icon}</div>
                     <div>
                       <div style={{ fontSize: 12, color: "#c9a96e", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{c.label}</div>
-                      <div style={{ color: "rgba(244,240,234,0.75)", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.6, whiteSpace: "pre-line", fontSize: 15 }}>{c.value}</div>
+                      <div style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.6, whiteSpace: "pre-line", fontSize: 15 }}>{c.value}</div>
                     </div>
                   </div>
                 </AnimSection>
@@ -1416,7 +1582,7 @@ export default function GmalinaCourtWebsite() {
                 <div style={{ width: 38, height: 38, borderRadius: "10px", background: "linear-gradient(135deg, #c9a96e, #e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏛️</div>
                 <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700 }}>Gmalina Court</span>
               </div>
-              <p style={{ color: "rgba(244,240,234,0.4)", lineHeight: 1.8, fontSize: 14, fontFamily: "'DM Sans', sans-serif", maxWidth: 280 }}>
+              <p style={{ color: t.textFaint, lineHeight: 1.8, fontSize: 14, fontFamily: "'DM Sans', sans-serif", maxWidth: 280 }}>
                 Premier lodge in Liwonde, Malawi. Where luxury meets the wild heart of Africa.
               </p>
             </div>
@@ -1426,7 +1592,7 @@ export default function GmalinaCourtWebsite() {
               { title: "Contact", links: ["+265 998 00 19 09", "pijotrust2012@yahoo.com", "Facebook", "Tripadvisor"] },
             ].map(col => (
               <div key={col.title}>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(244,240,234,0.4)", marginBottom: 20 }}>{col.title}</div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", color: t.textFaint, marginBottom: 20 }}>{col.title}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {col.links.map(l => <a key={l} href="#" className="footer-link">{l}</a>)}
                 </div>
@@ -1434,8 +1600,8 @@ export default function GmalinaCourtWebsite() {
             ))}
           </div>
 
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-            <div style={{ color: "rgba(244,240,234,0.3)", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+          <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ color: t.textFaint, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
               © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
