@@ -187,11 +187,25 @@ export default function GmalinaCourtWebsite() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [galleryFilter, setGalleryFilter] = useState("All");
   const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeBlogTag, setActiveBlogTag] = useState("All");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("gmalina-theme");
+    if (saved) setIsDark(saved === "dark");
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      localStorage.setItem("gmalina-theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
   useEffect(() => {
     const onScroll = () => {
@@ -214,38 +228,45 @@ export default function GmalinaCourtWebsite() {
     return () => clearInterval(t);
   }, []);
 
+  // ── Theme tokens ──
+  const t = {
+    bg:          isDark ? "#08090a"              : "#f8f5f0",
+    bgAlt:       isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.025)",
+    bgCard:      isDark ? "rgba(255,255,255,0.03)"  : "rgba(255,255,255,0.85)",
+    bgCardHov:   isDark ? "rgba(201,169,110,0.07)"  : "rgba(201,169,110,0.12)",
+    border:      isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.08)",
+    borderGold:  isDark ? "rgba(201,169,110,0.2)"   : "rgba(201,169,110,0.4)",
+    borderTeal:  isDark ? "rgba(20,160,140,0.2)"    : "rgba(20,160,140,0.3)",
+    text:        isDark ? "#f4f0ea"              : "#1a1208",
+    textMuted:   isDark ? "rgba(244,240,234,0.65)" : "rgba(26,18,8,0.65)",
+    textFaint:   isDark ? "rgba(244,240,234,0.4)"  : "rgba(26,18,8,0.4)",
+    navBg:       isDark ? "rgba(8,9,10,0.92)"    : "rgba(248,245,240,0.95)",
+    navBorder:   isDark ? "rgba(255,255,255,0.05)": "rgba(0,0,0,0.08)",
+    inputBg:     isDark ? "rgba(255,255,255,0.04)": "rgba(0,0,0,0.04)",
+    inputBorder: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)",
+    statsBg:     isDark ? "rgba(201,169,110,0.06)": "rgba(201,169,110,0.08)",
+    meshBg:      isDark
+      ? "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.1) 0%, transparent 60%)"
+      : "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.12) 0%, transparent 60%)",
+    mobileMenuBg: isDark ? "rgba(8,9,10,0.97)"  : "rgba(248,245,240,0.98)",
+    faqBg:       isDark ? "rgba(255,255,255,0.03)": "rgba(255,255,255,0.7)",
+    faqHov:      isDark ? "rgba(201,169,110,0.05)": "rgba(201,169,110,0.08)",
+    faqOpen:     isDark ? "rgba(201,169,110,0.07)": "rgba(201,169,110,0.12)",
+    scrollTrack: isDark ? "#08090a"              : "#f8f5f0",
+  };
+
   return (
-    <div style={{ fontFamily: "'Georgia', 'Palatino Linotype', serif", background: "#08090a", color: "#f4f0ea", overflowX: "hidden" }}>
+    <div style={{ fontFamily: "'Georgia', 'Palatino Linotype', serif", background: t.bg, color: t.text, overflowX: "hidden", transition: "background 0.4s ease, color 0.4s ease" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'DM Sans', sans-serif; }
+        body { font-family: 'DM Sans', sans-serif; transition: background 0.4s ease; }
         h1, h2, h3, h4 { font-family: 'Playfair Display', Georgia, serif; }
 
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #08090a; }
+        ::-webkit-scrollbar-track { background: ${t.scrollTrack}; }
         ::-webkit-scrollbar-thumb { background: #c9a96e; border-radius: 2px; }
-
-        .mesh-bg {
-          background: #08090a;
-          background-image:
-            radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.1) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 100%);
-        }
-
-        .glass {
-          background: rgba(255,255,255,0.04);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .glass-gold {
-          background: rgba(201,169,110,0.06);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(201,169,110,0.2);
-        }
 
         .gold-text {
           background: linear-gradient(135deg, #c9a96e 0%, #e8d5a3 50%, #c9a96e 100%);
@@ -254,11 +275,8 @@ export default function GmalinaCourtWebsite() {
           background-clip: text;
         }
 
-        .teal-glow { box-shadow: 0 0 30px rgba(20,160,140,0.3); }
-        .gold-glow { box-shadow: 0 0 40px rgba(201,169,110,0.25); }
-
         .nav-link {
-          color: rgba(244,240,234,0.7);
+          color: ${isDark ? "rgba(244,240,234,0.7)" : "rgba(26,18,8,0.7)"};
           text-decoration: none;
           font-family: 'DM Sans', sans-serif;
           font-size: 14px;
@@ -301,8 +319,8 @@ export default function GmalinaCourtWebsite() {
 
         .btn-outline {
           background: transparent;
-          color: #f4f0ea;
-          border: 1px solid rgba(244,240,234,0.3);
+          color: ${t.text};
+          border: 1px solid ${isDark ? "rgba(244,240,234,0.3)" : "rgba(26,18,8,0.25)"};
           padding: 13px 32px;
           border-radius: 50px;
           font-family: 'DM Sans', sans-serif;
@@ -320,136 +338,140 @@ export default function GmalinaCourtWebsite() {
         }
 
         .facility-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
+          background: ${t.bgCard};
+          border: 1px solid ${t.border};
           border-radius: 20px;
           padding: 32px;
           transition: all 0.4s;
           cursor: default;
         }
         .facility-card:hover {
-          background: rgba(201,169,110,0.07);
-          border-color: rgba(201,169,110,0.3);
+          background: ${t.bgCardHov};
+          border-color: ${t.borderGold};
           transform: translateY(-6px);
-          box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+          box-shadow: ${isDark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 24px 60px rgba(0,0,0,0.12)"};
         }
 
         .guest-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.06);
+          background: ${t.bgCard};
+          border: 1px solid ${t.border};
           border-radius: 20px;
           padding: 32px;
           transition: all 0.4s;
         }
         .guest-card:hover {
-          background: rgba(20,160,140,0.07);
-          border-color: rgba(20,160,140,0.3);
+          background: ${isDark ? "rgba(20,160,140,0.07)" : "rgba(20,160,140,0.08)"};
+          border-color: ${t.borderTeal};
           transform: translateY(-4px);
         }
 
         .stat-item {
           text-align: center;
           padding: 32px 24px;
-          border-right: 1px solid rgba(255,255,255,0.06);
+          border-right: 1px solid ${t.border};
         }
         .stat-item:last-child { border-right: none; }
 
         .testimonial-dot {
           width: 8px; height: 8px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.2);
+          background: ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"};
           cursor: pointer;
           transition: all 0.3s;
           border: none;
         }
-        .testimonial-dot.active {
-          background: #c9a96e;
-          transform: scale(1.3);
-        }
+        .testimonial-dot.active { background: #c9a96e; transform: scale(1.3); }
 
         .divider-line {
-          width: 60px;
-          height: 2px;
+          width: 60px; height: 2px;
           background: linear-gradient(90deg, #c9a96e, transparent);
           margin: 16px 0 24px 0;
         }
 
         .tag-pill {
           font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          padding: 4px 12px;
-          border-radius: 100px;
-          background: rgba(20,160,140,0.15);
-          color: #14a08c;
+          font-size: 11px; font-weight: 600;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          padding: 4px 12px; border-radius: 100px;
+          background: rgba(20,160,140,0.15); color: #14a08c;
           border: 1px solid rgba(20,160,140,0.25);
-          display: inline-block;
-          margin-bottom: 16px;
+          display: inline-block; margin-bottom: 16px;
         }
 
         .hero-orb-1 {
-          position: absolute;
-          width: 700px; height: 700px;
+          position: absolute; width: 700px; height: 700px;
           border-radius: 50%;
           background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%);
           top: -200px; left: -200px;
-          pointer-events: none;
-          animation: float 8s ease-in-out infinite;
+          pointer-events: none; animation: float 8s ease-in-out infinite;
         }
         .hero-orb-2 {
-          position: absolute;
-          width: 500px; height: 500px;
+          position: absolute; width: 500px; height: 500px;
           border-radius: 50%;
           background: radial-gradient(circle, rgba(20,160,140,0.08) 0%, transparent 70%);
           bottom: -100px; right: -100px;
-          pointer-events: none;
-          animation: float 10s ease-in-out infinite reverse;
+          pointer-events: none; animation: float 10s ease-in-out infinite reverse;
         }
 
         @keyframes float {
           0%, 100% { transform: translateY(0) scale(1); }
           50% { transform: translateY(-20px) scale(1.03); }
         }
-
         @keyframes shimmer {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; }
 
-        @media (max-width: 900px) {
-          .grid-4 { grid-template-columns: 1fr 1fr; }
-          .grid-3 { grid-template-columns: 1fr 1fr; }
+        /* ── THEME TOGGLE ── */
+        .theme-toggle {
+          position: relative;
+          width: 52px; height: 28px;
+          background: ${isDark ? "rgba(201,169,110,0.2)" : "rgba(20,160,140,0.15)"};
+          border: 1px solid ${isDark ? "rgba(201,169,110,0.35)" : "rgba(20,160,140,0.3)"};
+          border-radius: 100px;
+          cursor: pointer;
+          transition: all 0.4s ease;
+          flex-shrink: 0;
+          display: flex; align-items: center;
+          padding: 3px;
         }
-        @media (max-width: 600px) {
-          .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
-          .stat-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
-          .stat-item:last-child { border-bottom: none; }
+        .theme-toggle:hover {
+          background: ${isDark ? "rgba(201,169,110,0.3)" : "rgba(20,160,140,0.25)"};
+        }
+        .theme-toggle-thumb {
+          width: 20px; height: 20px;
+          border-radius: 50%;
+          background: ${isDark ? "linear-gradient(135deg, #c9a96e, #e8d5a3)" : "linear-gradient(135deg, #14a08c, #1dd4b8)"};
+          transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), background 0.4s;
+          transform: ${isDark ? "translateX(0)" : "translateX(24px)"};
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .contact-input {
           width: 100%;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: ${t.inputBg};
+          border: 1px solid ${t.inputBorder};
           border-radius: 12px;
           padding: 14px 18px;
-          color: #f4f0ea;
+          color: ${t.text};
           font-family: 'DM Sans', sans-serif;
           font-size: 15px;
           outline: none;
-          transition: border-color 0.3s;
+          transition: border-color 0.3s, background 0.4s, color 0.4s;
           resize: none;
         }
         .contact-input:focus { border-color: #c9a96e; }
-        .contact-input::placeholder { color: rgba(244,240,234,0.35); }
+        .contact-input::placeholder { color: ${t.textFaint}; }
 
         .footer-link {
-          color: rgba(244,240,234,0.5);
+          color: ${t.textFaint};
           text-decoration: none;
           font-size: 14px;
           transition: color 0.3s;
@@ -458,310 +480,189 @@ export default function GmalinaCourtWebsite() {
 
         /* Gallery */
         .gallery-filter-btn {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          padding: 8px 20px;
-          border-radius: 100px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: transparent;
-          color: rgba(244,240,234,0.6);
-          cursor: pointer;
-          transition: all 0.3s;
-          letter-spacing: 0.03em;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+          padding: 8px 20px; border-radius: 100px;
+          border: 1px solid ${t.border};
+          background: transparent; color: ${t.textMuted};
+          cursor: pointer; transition: all 0.3s; letter-spacing: 0.03em;
         }
         .gallery-filter-btn:hover { border-color: rgba(201,169,110,0.4); color: #c9a96e; }
         .gallery-filter-btn.active {
           background: linear-gradient(135deg, #c9a96e, #e8d5a3);
-          color: #08090a;
-          border-color: transparent;
-          font-weight: 600;
+          color: #08090a; border-color: transparent; font-weight: 600;
         }
 
         .gallery-item {
-          border-radius: 20px;
-          overflow: hidden;
-          cursor: pointer;
-          position: relative;
+          border-radius: 20px; overflow: hidden; cursor: pointer; position: relative;
           transition: transform 0.4s ease, box-shadow 0.4s ease;
-          border: 1px solid rgba(255,255,255,0.06);
+          border: 1px solid ${t.border};
         }
         .gallery-item:hover { transform: scale(1.02); box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
         .gallery-item:hover .gallery-overlay { opacity: 1; }
         .gallery-item:hover .gallery-icon { transform: scale(1.1); }
-
         .gallery-overlay {
           position: absolute; inset: 0;
-          background: rgba(8,9,10,0.55);
-          backdrop-filter: blur(4px);
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          opacity: 0; transition: opacity 0.35s;
-          gap: 8px;
+          background: rgba(8,9,10,0.55); backdrop-filter: blur(4px);
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          opacity: 0; transition: opacity 0.35s; gap: 8px;
         }
-
         .gallery-icon { transition: transform 0.4s; font-size: 52px; }
 
-        /* Lightbox */
         .lightbox-backdrop {
           position: fixed; inset: 0; z-index: 9000;
-          background: rgba(0,0,0,0.92);
-          backdrop-filter: blur(20px);
+          background: rgba(0,0,0,0.92); backdrop-filter: blur(20px);
           display: flex; align-items: center; justify-content: center;
           animation: fadeIn 0.25s ease;
         }
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
         /* FAQ */
         .faq-item {
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 16px;
-          overflow: hidden;
-          transition: border-color 0.3s;
-          margin-bottom: 12px;
+          border: 1px solid ${t.border}; border-radius: 16px;
+          overflow: hidden; transition: border-color 0.3s; margin-bottom: 12px;
         }
-        .faq-item.open { border-color: rgba(201,169,110,0.3); }
-
+        .faq-item.open { border-color: ${t.borderGold}; }
         .faq-question {
-          width: 100%;
-          background: rgba(255,255,255,0.03);
-          border: none;
-          color: #f4f0ea;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          text-align: left;
-          padding: 22px 28px;
-          cursor: pointer;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 16px;
-          transition: background 0.3s;
+          width: 100%; background: ${t.faqBg}; border: none; color: ${t.text};
+          font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+          text-align: left; padding: 22px 28px; cursor: pointer;
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 16px; transition: background 0.3s;
         }
-        .faq-question:hover { background: rgba(201,169,110,0.05); }
-        .faq-item.open .faq-question { background: rgba(201,169,110,0.07); }
-
+        .faq-question:hover { background: ${t.faqHov}; }
+        .faq-item.open .faq-question { background: ${t.faqOpen}; }
         .faq-chevron {
           width: 28px; height: 28px; border-radius: 50%;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"};
+          border: 1px solid ${t.border};
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          transition: transform 0.35s, background 0.3s;
+          flex-shrink: 0; transition: transform 0.35s, background 0.3s;
           font-size: 13px; color: #c9a96e;
         }
         .faq-item.open .faq-chevron { transform: rotate(180deg); background: rgba(201,169,110,0.15); }
-
         .faq-answer {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 15px;
-          color: rgba(244,240,234,0.65);
-          line-height: 1.8;
-          padding: 0 28px;
-          max-height: 0;
-          overflow: hidden;
+          font-family: 'DM Sans', sans-serif; font-size: 15px;
+          color: ${t.textMuted}; line-height: 1.8; padding: 0 28px;
+          max-height: 0; overflow: hidden;
           transition: max-height 0.4s ease, padding 0.4s ease;
         }
         .faq-item.open .faq-answer { max-height: 240px; padding: 4px 28px 24px; }
 
         /* Blog */
         .blog-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 24px;
-          overflow: hidden;
-          transition: all 0.4s;
-          cursor: pointer;
-          display: flex;
-          flex-direction: column;
+          background: ${t.bgCard}; border: 1px solid ${t.border};
+          border-radius: 24px; overflow: hidden; transition: all 0.4s;
+          cursor: pointer; display: flex; flex-direction: column;
         }
         .blog-card:hover {
-          border-color: rgba(201,169,110,0.25);
-          transform: translateY(-6px);
-          box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+          border-color: ${t.borderGold}; transform: translateY(-6px);
+          box-shadow: ${isDark ? "0 24px 60px rgba(0,0,0,0.4)" : "0 24px 60px rgba(0,0,0,0.1)"};
         }
         .blog-card:hover .blog-read-more { color: #c9a96e; gap: 10px; }
-
         .blog-read-more {
           display: flex; align-items: center; gap: 6px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px; font-weight: 600;
-          color: rgba(244,240,234,0.5);
-          transition: all 0.3s;
-          margin-top: auto;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+          color: ${t.textFaint}; transition: all 0.3s; margin-top: auto;
         }
-
         .blog-tag-btn {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 12px; font-weight: 600;
+          font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
           padding: 6px 16px; border-radius: 100px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: transparent;
-          color: rgba(244,240,234,0.55);
-          cursor: pointer;
-          transition: all 0.3s;
-          letter-spacing: 0.04em;
+          border: 1px solid ${t.border}; background: transparent;
+          color: ${t.textMuted}; cursor: pointer; transition: all 0.3s; letter-spacing: 0.04em;
         }
         .blog-tag-btn:hover { border-color: rgba(201,169,110,0.35); color: #c9a96e; }
         .blog-tag-btn.active { background: rgba(201,169,110,0.12); border-color: rgba(201,169,110,0.3); color: #c9a96e; }
 
         .section-label {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: #c9a96e;
-          margin-bottom: 12px;
-          display: block;
+          font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600;
+          letter-spacing: 0.2em; text-transform: uppercase; color: #c9a96e;
+          margin-bottom: 12px; display: block;
         }
 
         .noise-overlay {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 9999;
-          opacity: 0.025;
+          position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+          opacity: ${isDark ? "0.025" : "0.015"};
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         /* ── HAMBURGER ── */
         .hamburger {
-          display: none;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
+          display: none; flex-direction: column; justify-content: center; align-items: center;
           width: 44px; height: 44px;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          cursor: pointer;
-          gap: 5px;
-          transition: background 0.3s;
-          flex-shrink: 0;
+          background: ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"};
+          border: 1px solid ${t.border};
+          border-radius: 12px; cursor: pointer; gap: 5px; transition: background 0.3s; flex-shrink: 0;
         }
         .hamburger:hover { background: rgba(201,169,110,0.12); border-color: rgba(201,169,110,0.3); }
         .hamburger span {
-          display: block;
-          width: 20px; height: 2px;
-          background: #f4f0ea;
-          border-radius: 2px;
-          transition: all 0.35s ease;
-          transform-origin: center;
+          display: block; width: 20px; height: 2px;
+          background: ${t.text};
+          border-radius: 2px; transition: all 0.35s ease; transform-origin: center;
         }
         .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
         .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
         .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-        /* Mobile menu drawer */
         .mobile-menu {
-          position: fixed;
-          top: 72px; left: 0; right: 0;
-          background: rgba(8,9,10,0.97);
-          backdrop-filter: blur(24px);
-          border-bottom: 1px solid rgba(255,255,255,0.07);
-          z-index: 999;
-          padding: 0;
-          max-height: 0;
-          overflow: hidden;
+          position: fixed; top: 72px; left: 0; right: 0;
+          background: ${t.mobileMenuBg}; backdrop-filter: blur(24px);
+          border-bottom: 1px solid ${t.border}; z-index: 999;
+          padding: 0; max-height: 0; overflow: hidden;
           transition: max-height 0.45s cubic-bezier(0.4,0,0.2,1), padding 0.45s ease;
         }
-        .mobile-menu.open {
-          max-height: 520px;
-          padding: 16px 0 24px;
-        }
+        .mobile-menu.open { max-height: 520px; padding: 16px 0 24px; }
         .mobile-menu a {
-          display: block;
-          padding: 14px 28px;
-          color: rgba(244,240,234,0.75);
-          text-decoration: none;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
+          display: block; padding: 14px 28px;
+          color: ${t.textMuted}; text-decoration: none;
+          font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+          border-bottom: 1px solid ${t.border};
           transition: color 0.25s, background 0.25s;
         }
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
-        .mobile-menu .mobile-book-btn {
-          margin: 16px 28px 0;
-          display: block;
-          text-align: center;
-        }
+        .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
-        /* ── RESPONSIVE BREAKPOINTS ── */
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+          .grid-4 { grid-template-columns: 1fr 1fr; }
+          .grid-3 { grid-template-columns: 1fr 1fr; }
+        }
         @media (max-width: 768px) {
           .hamburger { display: flex !important; }
           .desktop-nav { display: none !important; }
-
-          /* Hero */
           .hero-badges { display: none !important; }
           .hero-scroll-indicator { display: none !important; }
-
-          /* Sections padding */
           .section-pad { padding: 72px 20px !important; }
           .section-pad-top { padding-top: 72px !important; }
-
-          /* About grid */
           .about-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
           .about-visual { display: none !important; }
-
-          /* Stats */
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .stat-item { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; padding: 20px 16px !important; }
-          .stat-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.06) !important; }
+          .stat-item { border-right: none !important; border-bottom: 1px solid ${t.border} !important; padding: 20px 16px !important; }
+          .stat-item:nth-child(odd) { border-right: 1px solid ${t.border} !important; }
           .stat-item:last-child { border-bottom: none !important; }
-          .stat-item:nth-last-child(2):nth-child(odd) { border-bottom: none !important; }
-
-          /* Grids */
           .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; }
-
-          /* FAQ layout */
           .faq-layout { grid-template-columns: 1fr !important; gap: 40px !important; }
           .faq-sticky { position: static !important; }
-
-          /* Blog featured */
           .blog-featured { grid-template-columns: 1fr !important; }
           .blog-featured-img { height: 200px !important; border-right: none !important; border-bottom: 1px solid rgba(201,169,110,0.12) !important; }
-
-          /* Contact layout */
           .contact-layout { grid-template-columns: 1fr !important; gap: 40px !important; }
           .contact-form-grid { grid-template-columns: 1fr !important; }
-
-          /* Footer */
           .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
           .footer-brand { grid-column: 1 / -1 !important; }
-
-          /* Gallery header */
           .gallery-header { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
           .gallery-filters { overflow-x: auto; padding-bottom: 8px; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
           .gallery-filters::-webkit-scrollbar { height: 2px; }
-
-          /* CTA */
           .cta-pad { padding: 48px 28px !important; }
-
-          /* Blog header */
           .blog-header { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
           .blog-tags { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
-
-          /* Guest cards header */
-          .guests-header { margin-bottom: 40px !important; }
-
-          /* Inline hero stats */
           .hero-inline-stats { gap: 24px !important; }
-
-          /* Section label divider center on mobile */
-          .divider-center-mobile { margin-left: auto !important; margin-right: auto !important; }
-
-          /* Faq question font */
           .faq-question { font-size: 14px !important; padding: 18px 20px !important; }
           .faq-answer { padding: 0 20px !important; }
           .faq-item.open .faq-answer { padding: 4px 20px 20px !important; }
         }
-
+        @media (max-width: 600px) {
+          .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+        }
         @media (max-width: 480px) {
           .footer-grid { grid-template-columns: 1fr !important; }
-          .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .hero-buttons { flex-direction: column !important; align-items: stretch !important; }
           .hero-buttons a { text-align: center !important; }
           .btn-primary, .btn-outline { width: 100%; text-align: center; }
@@ -779,9 +680,9 @@ export default function GmalinaCourtWebsite() {
         padding: "0 20px",
         height: 72,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: scrolled ? "rgba(8,9,10,0.92)" : "transparent",
+        background: scrolled ? t.navBg : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
+        borderBottom: scrolled ? `1px solid ${t.navBorder}` : "1px solid transparent",
         transition: "all 0.4s ease"
       }}>
         {/* Logo */}
@@ -793,25 +694,32 @@ export default function GmalinaCourtWebsite() {
             fontSize: 18, flexShrink: 0
           }}>🏛️</div>
           <div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, lineHeight: 1.1, color: t.text }}>
               Gmalina Court
             </div>
-            <div style={{ fontSize: 10, color: "rgba(244,240,234,0.45)", letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif" }}>
+            <div style={{ fontSize: 10, color: t.textFaint, letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif" }}>
               Liwonde · Malawi
             </div>
           </div>
         </div>
 
         {/* Desktop Nav */}
-        <div className="desktop-nav" style={{ display: "flex", gap: 36, alignItems: "center" }}>
+        <div className="desktop-nav" style={{ display: "flex", gap: 32, alignItems: "center" }}>
           {NAV_LINKS.map(link => (
             <a key={link} href={`#${link.toLowerCase()}`} className="nav-link">{link}</a>
           ))}
+          {/* Theme toggle */}
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+            <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
+          </button>
           <a href="#contact" className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }}>Book Now</a>
         </div>
 
-        {/* Mobile right side: Book Now + Hamburger */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Mobile right side */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" style={{ display: isMobile ? "flex" : "none" }}>
+            <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
+          </button>
           <a href="#contact" className="btn-primary" style={{ padding: "9px 18px", fontSize: 12, display: isMobile ? "inline-block" : "none" }}>Book Now</a>
           <button
             className={`hamburger ${menuOpen ? "open" : ""}`}
@@ -834,7 +742,7 @@ export default function GmalinaCourtWebsite() {
       </div>
 
       {/* ─── HERO ─── */}
-      <section className="mesh-bg" style={{ minHeight: "100vh", display: "flex", alignItems: "center", position: "relative", overflow: "hidden", paddingTop: 72 }}>
+      <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", position: "relative", overflow: "hidden", paddingTop: 72, background: t.bg, backgroundImage: t.meshBg }}>
         <div className="hero-orb-1" />
         <div className="hero-orb-2" />
 
@@ -925,7 +833,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── STATS BAR ─── */}
-      <div style={{ background: "rgba(201,169,110,0.06)", borderTop: "1px solid rgba(201,169,110,0.15)", borderBottom: "1px solid rgba(201,169,110,0.15)" }}>
+      <div style={{ background: t.statsBg, borderTop: `1px solid ${t.borderGold}`, borderBottom: `1px solid ${t.borderGold}` }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px" }}>
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
             {STATS.map((s, i) => (
@@ -939,7 +847,7 @@ export default function GmalinaCourtWebsite() {
       </div>
 
       {/* ─── ABOUT ─── */}
-      <section id="about" style={{ padding: "120px 32px", maxWidth: 1200, margin: "0 auto" }} className="section-pad">
+      <section id="about" style={{ padding: "120px 32px", maxWidth: 1200, margin: "0 auto", background: t.bg }} className="section-pad">
         <AnimSection>
           <div className="about-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
             <div>
@@ -1005,7 +913,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── FACILITIES ─── */}
-      <section id="facilities" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
+      <section id="facilities" style={{ padding: "120px 32px", background: t.bgAlt, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ textAlign: "center", marginBottom: 72 }}>
@@ -1127,11 +1035,11 @@ export default function GmalinaCourtWebsite() {
           {/* Featured testimonial */}
           <div style={{ maxWidth: 800, margin: "0 auto 48px", textAlign: "center" }}>
             <div style={{
-              background: "rgba(201,169,110,0.05)",
-              border: "1px solid rgba(201,169,110,0.15)",
+              background: isDark ? "rgba(201,169,110,0.05)" : "rgba(201,169,110,0.07)",
+              border: `1px solid ${t.borderGold}`,
               borderRadius: 28, padding: "48px",
               transition: "all 0.6s ease",
-              position: "relative"
+              position: "relative", color: t.text
             }}>
               <div style={{ fontSize: 64, lineHeight: 0.8, color: "#c9a96e", fontFamily: "'Playfair Display', serif", opacity: 0.4, marginBottom: 32 }}>"</div>
               <p style={{
@@ -1166,7 +1074,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── GALLERY ─── */}
-      <section id="gallery" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
+      <section id="gallery" style={{ padding: "120px 32px", background: t.bgAlt, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div className="gallery-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 32 }}>
@@ -1223,11 +1131,11 @@ export default function GmalinaCourtWebsite() {
         {lightbox && (
           <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
             <div style={{
-              background: "rgba(14,16,18,0.95)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: isDark ? "rgba(14,16,18,0.95)" : "rgba(255,252,248,0.98)",
+              border: `1px solid ${t.border}`,
               borderRadius: 28, padding: "64px 80px",
               textAlign: "center", maxWidth: 480,
-              position: "relative"
+              position: "relative", color: t.text
             }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setLightbox(null)} style={{
                 position: "absolute", top: 20, right: 20,
@@ -1356,7 +1264,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── FAQ ─── */}
-      <section id="faq" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
+      <section id="faq" style={{ padding: "120px 32px", background: t.bgAlt, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div className="faq-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: 80, alignItems: "start" }}>
             <AnimSection>
@@ -1374,8 +1282,8 @@ export default function GmalinaCourtWebsite() {
                 {/* Decorative element */}
                 <div style={{
                   marginTop: 48,
-                  background: "rgba(201,169,110,0.06)",
-                  border: "1px solid rgba(201,169,110,0.15)",
+                  background: isDark ? "rgba(201,169,110,0.06)" : "rgba(201,169,110,0.1)",
+                  border: `1px solid ${t.borderGold}`,
                   borderRadius: 20, padding: "24px",
                   display: "flex", gap: 16, alignItems: "center"
                 }}>
@@ -1473,8 +1381,8 @@ export default function GmalinaCourtWebsite() {
 
             <AnimSection delay={0.2}>
               <div style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: t.bgCard,
+                border: `1px solid ${t.border}`,
                 borderRadius: 24, padding: "40px"
               }}>
                 <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 28 }}>Send us a Message</h3>
@@ -1497,9 +1405,9 @@ export default function GmalinaCourtWebsite() {
 
       {/* ─── FOOTER ─── */}
       <footer style={{
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: `1px solid ${t.border}`,
         padding: "64px 32px 40px",
-        background: "#06070a"
+        background: isDark ? "#06070a" : "#ede9e3"
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 64 }}>
