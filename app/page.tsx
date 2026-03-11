@@ -694,8 +694,8 @@ export default function GmalinaCourtWebsite() {
 
             <h1 style={{ fontSize: "clamp(44px, 7vw, 88px)", lineHeight: 1.05, fontWeight: 900, marginBottom: 28, letterSpacing: "-0.02em" }}>
               Where Luxury<br />
-              <span className="gold-text">Meets the Wild</span><br />
-              Heart of Malawi
+              <span className="gold-text">Meets the Warm</span><br />
+              Heart of Africa
             </h1>
 
             <p style={{ fontSize: 18, color: "rgba(244,240,234,0.65)", lineHeight: 1.8, maxWidth: 560, marginBottom: 48, fontFamily: "'DM Sans', sans-serif", fontWeight: 300 }}>
