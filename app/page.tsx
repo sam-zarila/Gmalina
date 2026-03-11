@@ -194,7 +194,10 @@ export default function GmalinaCourtWebsite() {
   const [activeBlogTag, setActiveBlogTag] = useState("All");
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 40);
+      if (window.scrollY > 100) setMenuOpen(false);
+    };
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -622,6 +625,149 @@ export default function GmalinaCourtWebsite() {
           opacity: 0.025;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
+
+        /* ── HAMBURGER ── */
+        .hamburger {
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          width: 44px; height: 44px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          cursor: pointer;
+          gap: 5px;
+          transition: background 0.3s;
+          flex-shrink: 0;
+        }
+        .hamburger:hover { background: rgba(201,169,110,0.12); border-color: rgba(201,169,110,0.3); }
+        .hamburger span {
+          display: block;
+          width: 20px; height: 2px;
+          background: #f4f0ea;
+          border-radius: 2px;
+          transition: all 0.35s ease;
+          transform-origin: center;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        /* Mobile menu drawer */
+        .mobile-menu {
+          position: fixed;
+          top: 72px; left: 0; right: 0;
+          background: rgba(8,9,10,0.97);
+          backdrop-filter: blur(24px);
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+          z-index: 999;
+          padding: 0;
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.45s cubic-bezier(0.4,0,0.2,1), padding 0.45s ease;
+        }
+        .mobile-menu.open {
+          max-height: 520px;
+          padding: 16px 0 24px;
+        }
+        .mobile-menu a {
+          display: block;
+          padding: 14px 28px;
+          color: rgba(244,240,234,0.75);
+          text-decoration: none;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          border-bottom: 1px solid rgba(255,255,255,0.04);
+          transition: color 0.25s, background 0.25s;
+        }
+        .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
+        .mobile-menu .mobile-book-btn {
+          margin: 16px 28px 0;
+          display: block;
+          text-align: center;
+        }
+
+        /* ── RESPONSIVE BREAKPOINTS ── */
+        @media (max-width: 768px) {
+          .hamburger { display: flex !important; }
+          .desktop-nav { display: none !important; }
+
+          /* Hero */
+          .hero-badges { display: none !important; }
+          .hero-scroll-indicator { display: none !important; }
+
+          /* Sections padding */
+          .section-pad { padding: 72px 20px !important; }
+          .section-pad-top { padding-top: 72px !important; }
+
+          /* About grid */
+          .about-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .about-visual { display: none !important; }
+
+          /* Stats */
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .stat-item { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; padding: 20px 16px !important; }
+          .stat-item:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.06) !important; }
+          .stat-item:last-child { border-bottom: none !important; }
+          .stat-item:nth-last-child(2):nth-child(odd) { border-bottom: none !important; }
+
+          /* Grids */
+          .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; }
+
+          /* FAQ layout */
+          .faq-layout { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .faq-sticky { position: static !important; }
+
+          /* Blog featured */
+          .blog-featured { grid-template-columns: 1fr !important; }
+          .blog-featured-img { height: 200px !important; border-right: none !important; border-bottom: 1px solid rgba(201,169,110,0.12) !important; }
+
+          /* Contact layout */
+          .contact-layout { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .contact-form-grid { grid-template-columns: 1fr !important; }
+
+          /* Footer */
+          .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
+          .footer-brand { grid-column: 1 / -1 !important; }
+
+          /* Gallery header */
+          .gallery-header { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
+          .gallery-filters { overflow-x: auto; padding-bottom: 8px; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+          .gallery-filters::-webkit-scrollbar { height: 2px; }
+
+          /* CTA */
+          .cta-pad { padding: 48px 28px !important; }
+
+          /* Blog header */
+          .blog-header { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
+          .blog-tags { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+
+          /* Guest cards header */
+          .guests-header { margin-bottom: 40px !important; }
+
+          /* Inline hero stats */
+          .hero-inline-stats { gap: 24px !important; }
+
+          /* Section label divider center on mobile */
+          .divider-center-mobile { margin-left: auto !important; margin-right: auto !important; }
+
+          /* Faq question font */
+          .faq-question { font-size: 14px !important; padding: 18px 20px !important; }
+          .faq-answer { padding: 0 20px !important; }
+          .faq-item.open .faq-answer { padding: 4px 20px 20px !important; }
+        }
+
+        @media (max-width: 480px) {
+          .footer-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .hero-buttons { flex-direction: column !important; align-items: stretch !important; }
+          .hero-buttons a { text-align: center !important; }
+          .btn-primary, .btn-outline { width: 100%; text-align: center; }
+          .cta-buttons { flex-direction: column !important; align-items: stretch !important; }
+          .cta-buttons a { text-align: center !important; width: 100% !important; }
+        }
       `}</style>
 
       {/* Noise texture overlay */}
@@ -630,10 +776,10 @@ export default function GmalinaCourtWebsite() {
       {/* ─── NAVBAR ─── */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        padding: "0 32px",
+        padding: "0 20px",
         height: 72,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: scrolled ? "rgba(8,9,10,0.85)" : "transparent",
+        background: scrolled ? "rgba(8,9,10,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
         borderBottom: scrolled ? "1px solid rgba(255,255,255,0.05)" : "1px solid transparent",
         transition: "all 0.4s ease"
@@ -644,7 +790,7 @@ export default function GmalinaCourtWebsite() {
             width: 38, height: 38, borderRadius: "10px",
             background: "linear-gradient(135deg, #c9a96e, #e8d5a3)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18
+            fontSize: 18, flexShrink: 0
           }}>🏛️</div>
           <div>
             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>
@@ -656,14 +802,36 @@ export default function GmalinaCourtWebsite() {
           </div>
         </div>
 
-        {/* Nav links */}
-        <div style={{ display: "flex", gap: 36, alignItems: "center" }}>
+        {/* Desktop Nav */}
+        <div className="desktop-nav" style={{ display: "flex", gap: 36, alignItems: "center" }}>
           {NAV_LINKS.map(link => (
-            <a key={link} href={`#${link.toLowerCase()}`} className="nav-link" style={{ display: isMobile ? "none" : "block" }}>{link}</a>
+            <a key={link} href={`#${link.toLowerCase()}`} className="nav-link">{link}</a>
           ))}
           <a href="#contact" className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }}>Book Now</a>
         </div>
+
+        {/* Mobile right side: Book Now + Hamburger */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <a href="#contact" className="btn-primary" style={{ padding: "9px 18px", fontSize: 12, display: isMobile ? "inline-block" : "none" }}>Book Now</a>
+          <button
+            className={`hamburger ${menuOpen ? "open" : ""}`}
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            <span /><span /><span />
+          </button>
+        </div>
       </nav>
+
+      {/* Mobile Menu Drawer */}
+      <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
+        {NAV_LINKS.map(link => (
+          <a key={link} href={`#${link.toLowerCase()}`} onClick={() => setMenuOpen(false)}>{link}</a>
+        ))}
+        <a href="#contact" className="btn-primary mobile-book-btn" onClick={() => setMenuOpen(false)}>
+          Reserve Your Stay →
+        </a>
+      </div>
 
       {/* ─── HERO ─── */}
       <section className="mesh-bg" style={{ minHeight: "100vh", display: "flex", alignItems: "center", position: "relative", overflow: "hidden", paddingTop: 72 }}>
@@ -694,8 +862,8 @@ export default function GmalinaCourtWebsite() {
 
             <h1 style={{ fontSize: "clamp(44px, 7vw, 88px)", lineHeight: 1.05, fontWeight: 900, marginBottom: 28, letterSpacing: "-0.02em" }}>
               Where Luxury<br />
-              <span className="gold-text">Meets the Warm</span><br />
-              Heart of Africa
+              <span className="gold-text">Meets the Wild</span><br />
+              Heart of Malawi
             </h1>
 
             <p style={{ fontSize: 18, color: "rgba(244,240,234,0.65)", lineHeight: 1.8, maxWidth: 560, marginBottom: 48, fontFamily: "'DM Sans', sans-serif", fontWeight: 300 }}>
@@ -704,7 +872,7 @@ export default function GmalinaCourtWebsite() {
               Liwonde National Park.
             </p>
 
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 64 }}>
+            <div className="hero-buttons" style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 64 }}>
               <a href="#contact" className="btn-primary">Reserve Your Stay</a>
               <a href="#about" className="btn-outline">Discover More</a>
             </div>
@@ -725,7 +893,7 @@ export default function GmalinaCourtWebsite() {
           </div>
 
           {/* Floating badges */}
-          <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: 16 }} className="glass-badges">
+          <div className="hero-badges" style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: 16 }}>
             {[
               { icon: "🏆", t: "Award Winning", s: "Tripadvisor Choice" },
               { icon: "🦁", t: "Safari Nearby", s: "5 min to Park" },
@@ -750,7 +918,7 @@ export default function GmalinaCourtWebsite() {
         </div>
 
         {/* Scroll indicator */}
-        <div style={{ position: "absolute", bottom: 40, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, opacity: 0.4 }}>
+        <div className="hero-scroll-indicator" style={{ position: "absolute", bottom: 40, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, opacity: 0.4 }}>
           <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase" }}>Scroll</div>
           <div style={{ width: 1, height: 48, background: "linear-gradient(to bottom, #c9a96e, transparent)" }} />
         </div>
@@ -759,7 +927,7 @@ export default function GmalinaCourtWebsite() {
       {/* ─── STATS BAR ─── */}
       <div style={{ background: "rgba(201,169,110,0.06)", borderTop: "1px solid rgba(201,169,110,0.15)", borderBottom: "1px solid rgba(201,169,110,0.15)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
             {STATS.map((s, i) => (
               <div key={i} className="stat-item">
                 <div style={{ fontSize: 36, fontWeight: 800, fontFamily: "'Playfair Display', serif" }} className="gold-text">{s.value}</div>
@@ -771,9 +939,9 @@ export default function GmalinaCourtWebsite() {
       </div>
 
       {/* ─── ABOUT ─── */}
-      <section id="about" style={{ padding: "120px 32px", maxWidth: 1200, margin: "0 auto" }}>
+      <section id="about" style={{ padding: "120px 32px", maxWidth: 1200, margin: "0 auto" }} className="section-pad">
         <AnimSection>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+          <div className="about-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
             <div>
               <span className="section-label">About Gmalina Court</span>
               <div className="divider-line" />
@@ -802,7 +970,7 @@ export default function GmalinaCourtWebsite() {
             </div>
 
             {/* Visual collage */}
-            <div style={{ position: "relative", height: 480 }}>
+            <div className="about-visual" style={{ position: "relative", height: 480 }}>
               <div style={{
                 position: "absolute", top: 0, left: 0,
                 width: "70%", height: "65%",
@@ -837,7 +1005,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── FACILITIES ─── */}
-      <section id="facilities" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      <section id="facilities" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ textAlign: "center", marginBottom: 72 }}>
@@ -867,7 +1035,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── GUEST TYPES ─── */}
-      <section id="guests" style={{ padding: "120px 32px" }}>
+      <section id="guests" style={{ padding: "120px 32px" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ marginBottom: 72 }}>
@@ -898,7 +1066,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── ATTRACTIONS ─── */}
-      <section id="attractions" style={{ padding: "120px 32px", background: "rgba(20,160,140,0.04)", borderTop: "1px solid rgba(20,160,140,0.1)", borderBottom: "1px solid rgba(20,160,140,0.1)" }}>
+      <section id="attractions" style={{ padding: "120px 32px", background: "rgba(20,160,140,0.04)", borderTop: "1px solid rgba(20,160,140,0.1)", borderBottom: "1px solid rgba(20,160,140,0.1)" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ textAlign: "center", marginBottom: 72 }}>
@@ -944,7 +1112,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── TESTIMONIALS ─── */}
-      <section style={{ padding: "120px 32px" }}>
+      <section style={{ padding: "120px 32px" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -998,10 +1166,10 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── GALLERY ─── */}
-      <section id="gallery" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      <section id="gallery" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 32 }}>
+            <div className="gallery-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 32 }}>
               <div>
                 <span className="section-label">Photo Gallery</span>
                 <div className="divider-line" />
@@ -1009,7 +1177,7 @@ export default function GmalinaCourtWebsite() {
                   See it to<br /><span className="gold-text">Believe It</span>
                 </h2>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="gallery-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {GALLERY_FILTERS.map(f => (
                   <button key={f} className={`gallery-filter-btn ${galleryFilter === f ? "active" : ""}`} onClick={() => setGalleryFilter(f)}>{f}</button>
                 ))}
@@ -1088,10 +1256,10 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── BLOG ─── */}
-      <section id="blog" style={{ padding: "120px 32px" }}>
+      <section id="blog" style={{ padding: "120px 32px" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 56, flexWrap: "wrap", gap: 32 }}>
+            <div className="blog-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 56, flexWrap: "wrap", gap: 32 }}>
               <div>
                 <span className="section-label">Stories & Insights</span>
                 <div className="divider-line" />
@@ -1099,7 +1267,7 @@ export default function GmalinaCourtWebsite() {
                   From Our<br /><span className="gold-text">Journal</span>
                 </h2>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="blog-tags" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {["All", "Travel Guide", "Cuisine", "Events", "Lifestyle", "Wellness", "Culture"].map(tag => (
                   <button key={tag} className={`blog-tag-btn ${activeBlogTag === tag ? "active" : ""}`} onClick={() => setActiveBlogTag(tag)}>{tag}</button>
                 ))}
@@ -1120,8 +1288,8 @@ export default function GmalinaCourtWebsite() {
                 marginBottom: 24,
                 cursor: "pointer",
                 transition: "all 0.4s"
-              }}>
-                <div style={{
+              }} className="blog-featured">
+                <div className="blog-featured-img" style={{
                   background: BLOGS[0].color,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 120, padding: "60px",
@@ -1188,11 +1356,11 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── FAQ ─── */}
-      <section id="faq" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      <section id="faq" style={{ padding: "120px 32px", background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} className="section-pad">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: 80, alignItems: "start" }}>
+          <div className="faq-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.8fr", gap: 80, alignItems: "start" }}>
             <AnimSection>
-              <div style={{ position: "sticky", top: 120 }}>
+              <div className="faq-sticky" style={{ position: "sticky", top: 120 }}>
                 <span className="section-label">FAQ</span>
                 <div className="divider-line" />
                 <h2 style={{ fontSize: "clamp(32px, 3.5vw, 52px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 24 }}>
@@ -1246,7 +1414,7 @@ export default function GmalinaCourtWebsite() {
             borderRadius: 32, padding: "72px 64px",
             textAlign: "center",
             position: "relative", overflow: "hidden"
-          }}>
+          }} className="cta-pad">
             <div style={{
               position: "absolute", inset: 0,
               backgroundImage: "linear-gradient(rgba(201,169,110,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(201,169,110,0.03) 1px, transparent 1px)",
@@ -1258,7 +1426,7 @@ export default function GmalinaCourtWebsite() {
             <p style={{ color: "rgba(244,240,234,0.6)", maxWidth: 480, margin: "0 auto 40px", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, position: "relative" }}>
               Reserve your room today and experience the finest hospitality in the heart of Malawi.
             </p>
-            <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
+            <div className="cta-buttons" style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
               <a href="#contact" className="btn-primary">Book Your Room →</a>
               <a href="tel:+265998001909" className="btn-outline">+265 998 00 19 09</a>
             </div>
@@ -1267,7 +1435,7 @@ export default function GmalinaCourtWebsite() {
       </AnimSection>
 
       {/* ─── CONTACT ─── */}
-      <section id="contact" style={{ padding: "0 32px 120px" }}>
+      <section id="contact" style={{ padding: "0 32px 120px" }} className="section-pad section-pad-top">
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <AnimSection>
             <div style={{ marginBottom: 72 }}>
@@ -1279,7 +1447,7 @@ export default function GmalinaCourtWebsite() {
             </div>
           </AnimSection>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 64, alignItems: "start" }}>
+          <div className="contact-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 64, alignItems: "start" }}>
             <div>
               {[
                 { icon: "📍", label: "Address", value: "M5 Road, Next to Fcapital Bank\nP.O. Box 6, Liwonde, Machinga, Malawi" },
@@ -1311,7 +1479,7 @@ export default function GmalinaCourtWebsite() {
               }}>
                 <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 28 }}>Send us a Message</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="contact-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <input className="contact-input" placeholder="Your Name" />
                     <input className="contact-input" placeholder="Email Address" />
                   </div>
@@ -1334,14 +1502,14 @@ export default function GmalinaCourtWebsite() {
         background: "#06070a"
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 64 }}>
-            <div>
+          <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 64 }}>
+            <div className="footer-brand">
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <div style={{ width: 38, height: 38, borderRadius: "10px", background: "linear-gradient(135deg, #c9a96e, #e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏛️</div>
                 <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700 }}>Gmalina Court</span>
               </div>
               <p style={{ color: "rgba(244,240,234,0.4)", lineHeight: 1.8, fontSize: 14, fontFamily: "'DM Sans', sans-serif", maxWidth: 280 }}>
-                Premier lodge in Liwonde, Malawi. Where luxury meets the warm heart of Africa.
+                Premier lodge in Liwonde, Malawi. Where luxury meets the wild heart of Africa.
               </p>
             </div>
             {[
@@ -1360,7 +1528,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: "rgba(244,240,234,0.3)", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
