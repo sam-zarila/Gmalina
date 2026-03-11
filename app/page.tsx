@@ -4,7 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 
 const NAV_LINKS = ["About", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
 
-const GALLERY_ITEMS = [
+interface GalleryItem {
+  emoji: string;
+  label: string;
+  category: string;
+  span: string;
+  bg: string;
+}
+
+const GALLERY_ITEMS: GalleryItem[] = [
   { emoji: "🏊", label: "Swimming Pool", category: "Facilities", span: "wide", bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))" },
   { emoji: "🛏️", label: "Deluxe Suite", category: "Rooms", span: "tall", bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))" },
   { emoji: "🍽️", label: "Fine Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))" },
@@ -110,8 +118,8 @@ const BLOGS = [
   },
 ];
 
-function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement>, boolean] {
-  const ref = useRef<HTMLDivElement>(null);
+function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement | null>, boolean] {
+  const ref = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
@@ -178,16 +186,24 @@ const STATS = [
 export default function GmalinaCourtWebsite() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [galleryFilter, setGalleryFilter] = useState("All");
-  const [lightbox, setLightbox] = useState(null);
-  const [openFaq, setOpenFaq] = useState(null);
+  const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeBlogTag, setActiveBlogTag] = useState("All");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 700);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -643,7 +659,7 @@ export default function GmalinaCourtWebsite() {
         {/* Nav links */}
         <div style={{ display: "flex", gap: 36, alignItems: "center" }}>
           {NAV_LINKS.map(link => (
-            <a key={link} href={`#${link.toLowerCase()}`} className="nav-link" style={{ display: window.innerWidth < 700 ? "none" : "block" }}>{link}</a>
+            <a key={link} href={`#${link.toLowerCase()}`} className="nav-link" style={{ display: isMobile ? "none" : "block" }}>{link}</a>
           ))}
           <a href="#contact" className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }}>Book Now</a>
         </div>
@@ -1325,7 +1341,7 @@ export default function GmalinaCourtWebsite() {
                 <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700 }}>Gmalina Court</span>
               </div>
               <p style={{ color: "rgba(244,240,234,0.4)", lineHeight: 1.8, fontSize: 14, fontFamily: "'DM Sans', sans-serif", maxWidth: 280 }}>
-                Premier lodge in Liwonde, Malawi. Where luxury meets the wild heart of Africa.
+                Premier lodge in Liwonde, Malawi. Where luxury meets the warm heart of Africa.
               </p>
             </div>
             {[
@@ -1344,7 +1360,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: "rgba(244,240,234,0.3)", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
