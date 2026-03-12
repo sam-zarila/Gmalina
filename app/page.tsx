@@ -1,6 +1,46 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from "react";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getFirestore, collection, addDoc, serverTimestamp, updateDoc, doc, Firestore } from "firebase/firestore";
+
+// ─── Firebase initialisation (reads from .env.local) ─────────────────────────
+const firebaseConfig = {
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Validate config on startup — missing keys cause silent hangs
+if (typeof window !== "undefined") {
+  const missing = Object.entries(firebaseConfig)
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+  if (missing.length > 0) {
+    console.error("🔥 Firebase config MISSING keys:", missing);
+    console.error("Add these to your .env.local and restart the dev server.");
+  } else {
+    console.log("✅ Firebase config loaded. Project:", firebaseConfig.projectId);
+  }
+}
+
+const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db: Firestore    = getFirestore(app);
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Timeout helper — Firestore hangs forever when rules block writes ─────────
+function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`TIMEOUT after ${ms}ms — check Firestore rules or network`)), ms)
+    ),
+  ]);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = ["About", "Rooms", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
 
@@ -188,6 +228,213 @@ export default function GmalinaCourtWebsite() {
   const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeBlogTag, setActiveBlogTag] = useState("All");
+
+  // ── Booking modal state ──
+  const [bookingOpen, setBookingOpen]       = useState(false);
+  const [bookingStep, setBookingStep]       = useState<1|2|3|4|5>(1);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError]     = useState("");
+  const [firestoreId, setFirestoreId]       = useState("");
+  const [savedBookingRef, setSavedBookingRef] = useState("");
+  const [savedTxRef, setSavedTxRef]         = useState("");
+
+  // ── Room pricing ──
+  const ROOM_PRICES: Record<string, number> = {
+    "Deluxe Room":    85000,
+    "Superior Room":  70000,
+    "Standard Room":  60000,
+  };
+  const ROOM_ICONS: Record<string, string> = {
+    "Deluxe Room":   "✨",
+    "Superior Room": "⭐",
+    "Standard Room": "🛏️",
+  };
+
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", email: "", phone: "", country: "",
+    checkIn: "", checkOut: "", guests: "2",
+    roomType: "Deluxe Room",
+    occasion: "", dietary: "No restrictions",
+    airportTransfer: false, earlyCheckIn: false, lateCheckOut: false,
+    romanticSetup: false, extraBed: false,
+    specialRequests: "",
+  });
+
+  const openBooking = () => {
+    setBookingOpen(true); setBookingStep(1);
+    setBookingError(""); setFirestoreId(""); setSavedBookingRef(""); setSavedTxRef("");
+    document.body.style.overflow = "hidden";
+  };
+  const closeBooking = () => { setBookingOpen(false); document.body.style.overflow = ""; };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    setBookingError("");
+  };
+  const toggleAddon = (field: string) => setForm(f => ({ ...f, [field]: !(f as any)[field] }));
+
+  // Calculated pricing
+  const nights = form.checkIn && form.checkOut
+    ? Math.max(0, Math.round((new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86400000))
+    : 0;
+  const pricePerNight = ROOM_PRICES[form.roomType] || 60000;
+  const totalAmount   = pricePerNight * Math.max(nights, 1);
+  const depositAmount = Math.ceil(totalAmount * 0.20);
+  const balanceAmount = totalAmount - depositAmount;
+  const fmtMWK = (n: number) => "MWK " + n.toLocaleString("en-MW");
+  const fmtDate = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+  const validateBookingStep = (s: number) => {
+    if (s === 1) {
+      if (!form.firstName.trim()) return "Please enter your first name.";
+      if (!form.lastName.trim())  return "Please enter your last name.";
+      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Please enter a valid email address.";
+      if (!form.phone.trim())     return "Please enter your phone number.";
+    }
+    if (s === 2) {
+      if (!form.checkIn)  return "Please select a check-in date.";
+      if (!form.checkOut) return "Please select a check-out date.";
+      if (new Date(form.checkOut) <= new Date(form.checkIn)) return "Check-out must be after check-in.";
+    }
+    return "";
+  };
+
+  const bookingNext = () => {
+    const err = validateBookingStep(bookingStep);
+    if (err) { setBookingError(err); return; }
+    setBookingError("");
+    setBookingStep(s => (s + 1) as any);
+  };
+
+  // Step 3→4: save to Firestore then show payment screen
+  const saveAndPay = async () => {
+    setBookingLoading(true); setBookingError("");
+    try {
+      const ref   = `GML-${Date.now()}`;
+      const txRef = `${ref}-DEP`;
+      const addons = [
+        form.airportTransfer && "Airport Transfer",
+        form.earlyCheckIn    && "Early Check-in",
+        form.lateCheckOut    && "Late Check-out",
+        form.romanticSetup   && "Romantic Setup",
+        form.extraBed        && "Extra Bed",
+      ].filter(Boolean);
+
+      console.log("🔥 Saving booking to Firestore project:", firebaseConfig.projectId);
+      const docRef = await withTimeout(
+        addDoc(collection(db, "bookings"), {
+          bookingRef:      ref,
+          txRef,
+          firstName:       form.firstName.trim(),
+          lastName:        form.lastName.trim(),
+          fullName:        `${form.firstName.trim()} ${form.lastName.trim()}`,
+          email:           form.email.trim().toLowerCase(),
+          phone:           form.phone.trim(),
+          country:         form.country.trim() || null,
+          checkIn:         form.checkIn,
+          checkOut:        form.checkOut,
+          nights,
+          guests:          Number(form.guests),
+          roomType:        form.roomType,
+          pricePerNight,
+          totalAmount,
+          depositAmount,
+          balanceAmount,
+          occasion:        form.occasion || null,
+          dietary:         form.dietary,
+          addons,
+          specialRequests: form.specialRequests.trim() || null,
+          status:          "awaiting_payment",
+          paymentStatus:   "pending",
+          source:          "website",
+          createdAt:       serverTimestamp(),
+        }),
+        10000
+      );
+      console.log("✅ Booking saved! Doc ID:", docRef.id);
+
+      setSavedBookingRef(ref);
+      setSavedTxRef(txRef);
+      setFirestoreId(docRef.id);
+      setBookingStep(4);
+    } catch (e: any) {
+      console.error("❌ Firestore write failed:", e);
+      const msg = e?.message || "";
+      let userMsg = "Could not save your booking. Please try again.";
+      if (msg.includes("TIMEOUT")) {
+        userMsg = "Connection timed out. Check your Firestore security rules are in Test Mode, then try again.";
+      } else if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
+        userMsg = "Permission denied by Firestore. Go to Firebase Console → Firestore → Rules and set to Test Mode.";
+      } else if (msg.includes("not-found") || msg.includes("NOT_FOUND")) {
+        userMsg = "Firestore database not found. Make sure you created a database at Firebase Console → Firestore Database.";
+      } else if (msg.includes("unavailable") || msg.includes("UNAVAILABLE")) {
+        userMsg = "Firestore is unreachable. Check your internet connection.";
+      } else if (msg.includes("invalid-argument") || msg.includes("INVALID_ARGUMENT")) {
+        userMsg = "Invalid data sent to Firestore. Check browser console for details.";
+      }
+      setBookingError(userMsg);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  // Load PayChangu script once
+  useEffect(() => {
+    if (document.querySelector('script[src="https://in.paychangu.com/js/popup.js"]')) return;
+    const s = document.createElement("script");
+    s.src = "https://in.paychangu.com/js/popup.js";
+    s.async = true;
+    document.head.appendChild(s);
+  }, []);
+
+  const openPayChangu = () => {
+    const w = window as any;
+    if (typeof w.PaychanguCheckout !== "function") {
+      setBookingError("Payment system is loading, please try again in a moment.");
+      return;
+    }
+    setBookingError("");
+    w.PaychanguCheckout({
+      public_key: process.env.NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY || "pub-test-HYSBQpa5K91mmXMHrjhkmC6mAjObPJ2u",
+      tx_ref:     savedTxRef,
+      amount:     depositAmount,
+      currency:   "MWK",
+      callback_url: `${window.location.origin}/booking/payment-success?ref=${savedBookingRef}`,
+      return_url:   `${window.location.origin}/?booking=${savedBookingRef}&status=paid`,
+      customer: {
+        email:      form.email.trim(),
+        first_name: form.firstName.trim(),
+        last_name:  form.lastName.trim(),
+        phone:      form.phone.trim(),
+      },
+      customization: {
+        title:       "Gmalina Court Lodge — Booking Deposit",
+        description: `20% deposit · ${form.roomType} · ${nights} night${nights!==1?"s":""} · Ref: ${savedBookingRef}`,
+      },
+      meta: {
+        bookingRef: savedBookingRef,
+        firestoreId,
+        roomType:   form.roomType,
+        checkIn:    form.checkIn,
+        checkOut:   form.checkOut,
+        nights,
+        totalAmount,
+        depositAmount,
+        balanceAmount,
+      },
+    });
+  };
+
+  const markPaymentDone = async () => {
+    if (firestoreId) {
+      try {
+        await updateDoc(doc(db, "bookings", firestoreId), {
+          status: "confirmed", paymentStatus: "deposit_paid", paidAt: serverTimestamp(),
+        });
+      } catch (e) { console.error(e); }
+    }
+    setBookingStep(5);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("gmalina-theme");
@@ -428,6 +675,7 @@ export default function GmalinaCourtWebsite() {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -626,7 +874,149 @@ export default function GmalinaCourtWebsite() {
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
         .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
-        /* Mobile right group — hidden on desktop, shown on mobile */
+        /* ── BOOKING MODAL ── */
+        .booking-backdrop {
+          position: fixed; inset: 0; z-index: 10000;
+          background: rgba(0,0,0,0.82); backdrop-filter: blur(16px);
+          display: flex; align-items: center; justify-content: center;
+          padding: 16px; animation: fadeIn 0.2s ease; overflow-y: auto;
+        }
+        .booking-modal {
+          background: ${isDark ? "#0d0e10" : "#ffffff"};
+          border: 1px solid ${t.borderGold};
+          border-radius: 28px; width: 100%; max-width: 740px;
+          position: relative; margin: auto;
+          box-shadow: 0 48px 120px rgba(0,0,0,0.7);
+          animation: slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes slideUp { from { opacity:0; transform:translateY(40px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+        .bk-header {
+          padding: 28px 36px 22px;
+          border-bottom: 1px solid ${t.border};
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .bk-body   { padding: 28px 36px; max-height: 72vh; overflow-y: auto; }
+        .bk-footer {
+          padding: 20px 36px 28px;
+          border-top: 1px solid ${t.border};
+          display: flex; gap: 12px; align-items: center;
+        }
+        .bk-body::-webkit-scrollbar { width: 3px; }
+        .bk-body::-webkit-scrollbar-thumb { background: rgba(201,169,110,0.3); border-radius: 2px; }
+        .booking-close {
+          width: 34px; height: 34px; border-radius: 50%;
+          background: ${t.bgCard}; border: 1px solid ${t.border};
+          color: ${t.textMuted}; cursor: pointer; font-size: 18px;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 0.2s; flex-shrink: 0;
+        }
+        .booking-close:hover { border-color: #c9a96e; color: #c9a96e; transform: scale(1.08); }
+        .bk-input {
+          width: 100%; background: ${t.inputBg};
+          border: 1.5px solid ${t.inputBorder};
+          border-radius: 12px; padding: 12px 15px;
+          color: ${t.text}; font-family: 'DM Sans', sans-serif;
+          font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+          appearance: none;
+        }
+        .bk-input:focus { border-color: #c9a96e; box-shadow: 0 0 0 3px rgba(201,169,110,0.1); }
+        .bk-input::placeholder { color: ${t.textFaint}; }
+        .bk-input option { background: ${isDark ? "#0d0e10" : "#fff"}; color: ${t.text}; }
+        .bk-label {
+          font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
+          text-transform: uppercase; color: ${t.textFaint}; margin-bottom: 5px; display: block;
+        }
+        .bk-field { display: flex; flex-direction: column; gap: 4px; }
+        .bk-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .bk-g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .bk-error {
+          background: rgba(220,60,60,0.09); border: 1px solid rgba(220,60,60,0.28);
+          border-radius: 10px; padding: 11px 14px;
+          color: #e05555; font-family: 'DM Sans', sans-serif; font-size: 13px;
+          display: flex; align-items: center; gap: 7px; margin-top: 14px;
+        }
+        .bk-section-title {
+          font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+          color: ${t.textMuted}; margin-bottom: 12px; margin-top: 4px;
+          display: flex; align-items: center; gap: 7px;
+        }
+        .bk-room-card {
+          border: 2px solid ${t.border}; border-radius: 16px; padding: 16px;
+          cursor: pointer; transition: all 0.22s;
+          background: ${isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"};
+          position: relative; overflow: hidden;
+        }
+        .bk-room-card:hover { border-color: rgba(201,169,110,0.35); }
+        .bk-room-card.sel {
+          border-color: #c9a96e;
+          background: rgba(201,169,110,0.07);
+          box-shadow: 0 0 0 1px rgba(201,169,110,0.18), 0 6px 24px rgba(201,169,110,0.1);
+        }
+        .bk-room-card.sel::after {
+          content:"✓"; position:absolute; top:10px; right:10px;
+          width:20px; height:20px; border-radius:50%;
+          background:linear-gradient(135deg,#c9a96e,#e8d5a3);
+          color:#08090a; font-size:10px; font-weight:800;
+          display:flex; align-items:center; justify-content:center;
+        }
+        .bk-toggle {
+          display: flex; align-items: center; gap: 12px;
+          padding: 11px 14px; border-radius: 12px;
+          border: 1.5px solid ${t.border};
+          background: ${isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"};
+          cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .bk-toggle:hover { border-color: rgba(201,169,110,0.3); }
+        .bk-toggle.on { border-color: rgba(20,160,140,0.35); background: rgba(20,160,140,0.05); }
+        .bk-pill {
+          width: 38px; height: 21px; border-radius: 11px;
+          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+          position: relative; transition: all 0.3s; flex-shrink: 0;
+        }
+        .bk-pill::after {
+          content:''; position:absolute; width:13px; height:13px; border-radius:50%;
+          background: rgba(244,240,234,0.35); top:3px; left:3px;
+          transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.3s;
+        }
+        .bk-toggle.on .bk-pill { background:rgba(20,160,140,0.3); border-color:rgba(20,160,140,0.4); }
+        .bk-toggle.on .bk-pill::after { transform:translateX(17px); background:#14a08c; }
+        .bk-chip {
+          padding: 6px 13px; border-radius: 100px;
+          border: 1.5px solid ${t.border};
+          background: transparent;
+          font-size: 12px; font-weight: 500; cursor: pointer;
+          transition: all 0.2s; color: ${t.textMuted};
+        }
+        .bk-chip:hover { border-color: rgba(201,169,110,0.3); color: #c9a96e; }
+        .bk-chip.sel { background: rgba(201,169,110,0.1); border-color: #c9a96e; color: #c9a96e; font-weight: 600; }
+        .bk-step-row {
+          display: flex; gap: 6px; align-items: center; margin-bottom: 22px;
+        }
+        .bk-sep { height: 1px; background: ${t.border}; margin: 18px 0; }
+        .bk-price-row {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 10px 0; border-bottom: 1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"};
+        }
+        .bk-price-row:last-child { border-bottom: none; }
+        .btn-pay {
+          background: linear-gradient(135deg, #14a08c, #1dc9ae);
+          color: #fff; border: none;
+          padding: 14px 28px; border-radius: 100px;
+          font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700;
+          cursor: pointer; transition: all 0.3s; letter-spacing: 0.02em;
+          display: inline-flex; align-items: center; gap: 8px;
+          flex: 1; justify-content: center;
+          box-shadow: 0 8px 32px rgba(20,160,140,0.3);
+        }
+        .btn-pay:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(20,160,140,0.4); }
+        .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        @media (max-width: 600px) {
+          .bk-g2, .bk-g3 { grid-template-columns: 1fr !important; }
+          .bk-header { padding: 22px 22px 18px !important; }
+          .bk-body   { padding: 22px !important; }
+          .bk-footer { padding: 18px 22px 26px !important; flex-direction: column !important; }
+          .bk-footer .btn-primary, .bk-footer .btn-outline, .bk-footer .btn-pay { width: 100%; text-align: center; }
+        }
         .mobile-theme-toggle { display: none !important; }
         .mobile-book-btn-nav { display: none !important; }
 
@@ -723,7 +1113,7 @@ export default function GmalinaCourtWebsite() {
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
             <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
           </button>
-          <a href="#contact" className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }}>Book Now</a>
+          <button className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }} onClick={openBooking}>Book Now</button>
         </div>
 
         {/* Mobile right side */}
@@ -731,7 +1121,7 @@ export default function GmalinaCourtWebsite() {
           <button className="theme-toggle mobile-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
             <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
           </button>
-          <a href="#contact" className="btn-primary mobile-book-btn-nav" style={{ padding: "9px 18px", fontSize: 12 }}>Book Now</a>
+          <button className="btn-primary mobile-book-btn-nav" style={{ padding: "9px 18px", fontSize: 12 }} onClick={openBooking}>Book Now</button>
           <button
             className={`hamburger ${menuOpen ? "open" : ""}`}
             onClick={() => setMenuOpen(o => !o)}
@@ -747,9 +1137,9 @@ export default function GmalinaCourtWebsite() {
         {NAV_LINKS.map(link => (
           <a key={link} href={`#${link.toLowerCase()}`} onClick={() => setMenuOpen(false)}>{link}</a>
         ))}
-        <a href="#contact" className="btn-primary mobile-book-btn" onClick={() => setMenuOpen(false)}>
+        <button className="btn-primary mobile-book-btn" onClick={() => { setMenuOpen(false); openBooking(); }}>
           Reserve Your Stay →
-        </a>
+        </button>
       </div>
 
       {/* ─── HERO ─── */}
@@ -801,7 +1191,7 @@ export default function GmalinaCourtWebsite() {
             </p>
 
             <div className="hero-buttons" style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 64 }}>
-              <a href="#contact" className="btn-primary">Reserve Your Stay</a>
+              <button className="btn-primary" onClick={openBooking}>Reserve Your Stay</button>
               <a href="#about" className="btn-outline">Discover More</a>
             </div>
 
@@ -911,7 +1301,7 @@ export default function GmalinaCourtWebsite() {
                     </div>
                   ))}
                 </div>
-                <a href="#contact" className="btn-primary" style={{ alignSelf: "flex-start" }}>Book This Suite →</a>
+                <button className="btn-primary" style={{ alignSelf: "flex-start" }} onClick={openBooking}>Book This Suite →</button>
               </div>
             </div>
           </AnimSection>
@@ -953,7 +1343,7 @@ export default function GmalinaCourtWebsite() {
                         </span>
                       ))}
                     </div>
-                    <a href="#contact" style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>Reserve Room →</a>
+                    <button onClick={openBooking} style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>Reserve Room →</button>
                   </div>
                 </div>
               </AnimSection>
@@ -990,7 +1380,7 @@ export default function GmalinaCourtWebsite() {
                   </div>
                 ))}
               </div>
-              <a href="#contact" className="btn-primary">Get in Touch →</a>
+              <button className="btn-primary" onClick={openBooking}>Book Now →</button>
             </div>
 
             {/* Visual collage with real images */}
@@ -1107,9 +1497,9 @@ export default function GmalinaCourtWebsite() {
                   <div style={{ fontSize: 36, marginBottom: 16 }}>{g.icon}</div>
                   <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 12 }}>{g.title}</h3>
                   <p style={{ color: t.textMuted, lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 300, marginBottom: 20 }}>{g.desc}</p>
-                  <a href="#contact" style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 6 }}>
-                    Learn more <span style={{ transition: "transform 0.3s" }}>→</span>
-                  </a>
+                  <button onClick={openBooking} style={{ color: "#14a08c", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    Book Now <span style={{ transition: "transform 0.3s" }}>→</span>
+                  </button>
                 </div>
               </AnimSection>
             ))}
@@ -1318,9 +1708,9 @@ export default function GmalinaCourtWebsite() {
                 <p style={{ marginTop: 16, color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.7, fontSize: 15 }}>
                   Experience the finest {lightbox.label.toLowerCase()} at Gmalina Court — crafted to exceed every expectation.
                 </p>
-                <a href="#contact" className="btn-primary" style={{ marginTop: 24, display: "inline-block" }} onClick={() => setLightbox(null)}>
+                <button className="btn-primary" style={{ marginTop: 24 }} onClick={() => { setLightbox(null); openBooking(); }}>
                   Book Now →
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -1443,7 +1833,7 @@ export default function GmalinaCourtWebsite() {
                 <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.8, fontSize: 15, fontWeight: 300, marginBottom: 40 }}>
                   Can't find what you're looking for? Our concierge team is available 24/7.
                 </p>
-                <a href="#contact" className="btn-primary">Ask a Question →</a>
+                <button className="btn-primary" onClick={openBooking}>Reserve a Room →</button>
 
                 {/* Decorative element */}
                 <div style={{
@@ -1501,7 +1891,7 @@ export default function GmalinaCourtWebsite() {
               Reserve your room today and experience the finest hospitality in the heart of Malawi.
             </p>
             <div className="cta-buttons" style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", position: "relative" }}>
-              <a href="#contact" className="btn-primary">Book Your Room →</a>
+              <button className="btn-primary" onClick={openBooking}>Book Your Room →</button>
               <a href="tel:+265998001909" className="btn-outline">+265 998 00 19 09</a>
             </div>
           </div>
@@ -1569,7 +1959,361 @@ export default function GmalinaCourtWebsite() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
+      {/* ─── BOOKING MODAL ─── */}
+      {bookingOpen && (
+        <div className="booking-backdrop" onClick={closeBooking}>
+          <div className="booking-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="bk-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏛️</div>
+                <div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 700, color: t.text, lineHeight: 1.1 }}>Reserve Your Stay</div>
+                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: t.textFaint, marginTop: 2 }}>Gmalina Court Lodge · Liwonde, Malawi</div>
+                </div>
+              </div>
+              {/* Step indicator pills */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {["Details","Stay","Extras","Pay"].map((label, i) => {
+                  const n = i + 1;
+                  const active = bookingStep === n;
+                  const done   = bookingStep > n;
+                  return (
+                    <div key={label} style={{ display:"flex", alignItems:"center", gap:4 }}>
+                      <div style={{
+                        display:"flex", alignItems:"center", gap:5,
+                        padding:"4px 8px", borderRadius:100,
+                        background: active ? "rgba(201,169,110,0.1)" : "transparent",
+                        border: `1px solid ${active ? "rgba(201,169,110,0.3)" : "transparent"}`,
+                      }}>
+                        <div style={{
+                          width:18, height:18, borderRadius:"50%", flexShrink:0,
+                          background: done ? "linear-gradient(135deg,#c9a96e,#e8d5a3)" : active ? "rgba(201,169,110,0.2)" : "rgba(255,255,255,0.06)",
+                          border:`1px solid ${done||active ? "#c9a96e" : t.border}`,
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          fontSize:9, fontWeight:700,
+                          color: done ? "#08090a" : active ? "#c9a96e" : t.textFaint,
+                        }}>{done ? "✓" : n}</div>
+                        <span style={{ fontSize:10, fontWeight:500, color: active ? "#c9a96e" : t.textFaint }}>{label}</span>
+                      </div>
+                      {i < 3 && <div style={{ width:10, height:1, background: t.border }} />}
+                    </div>
+                  );
+                })}
+              </div>
+              <button className="booking-close" onClick={closeBooking}>×</button>
+            </div>
+
+
+            {/* Body */}
+            <div className="bk-body">
+
+              {/* ── STEP 1: Personal details ── */}
+              {bookingStep === 1 && (
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Your Details</div>
+                  <div className="bk-g2">
+                    <div className="bk-field">
+                      <label className="bk-label">First Name *</label>
+                      <input className="bk-input" name="firstName" value={form.firstName} onChange={handleFormChange} placeholder="James" />
+                    </div>
+                    <div className="bk-field">
+                      <label className="bk-label">Last Name *</label>
+                      <input className="bk-input" name="lastName" value={form.lastName} onChange={handleFormChange} placeholder="Banda" />
+                    </div>
+                  </div>
+                  <div className="bk-g2">
+                    <div className="bk-field">
+                      <label className="bk-label">Email Address *</label>
+                      <input className="bk-input" type="email" name="email" value={form.email} onChange={handleFormChange} placeholder="your@email.com" />
+                    </div>
+                    <div className="bk-field">
+                      <label className="bk-label">Phone Number *</label>
+                      <input className="bk-input" type="tel" name="phone" value={form.phone} onChange={handleFormChange} placeholder="+265 998 001 909" />
+                    </div>
+                  </div>
+                  <div className="bk-field">
+                    <label className="bk-label">Country (Optional)</label>
+                    <input className="bk-input" name="country" value={form.country} onChange={handleFormChange} placeholder="e.g. Malawi, United Kingdom…" />
+                  </div>
+                  <div className="bk-field">
+                    <label className="bk-label">Occasion (Optional)</label>
+                    <select className="bk-input" name="occasion" value={form.occasion} onChange={handleFormChange}>
+                      <option value="">Select occasion…</option>
+                      {["Leisure / Holiday","Business Trip","Safari / Wildlife","Anniversary / Romance","Family Vacation","Wedding / Honeymoon","Corporate Event"].map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
+                </div>
+              )}
+
+              {/* ── STEP 2: Stay details ── */}
+              {bookingStep === 2 && (
+                <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Stay Details</div>
+
+                  <div>
+                    <div className="bk-section-title">📅 Dates & Guests</div>
+                    <div className="bk-g2">
+                      <div className="bk-field">
+                        <label className="bk-label">Check-In *</label>
+                        <input className="bk-input" type="date" name="checkIn" value={form.checkIn}
+                          min={new Date().toISOString().split("T")[0]}
+                          onChange={e => { handleFormChange(e); if (form.checkOut && e.target.value >= form.checkOut) setForm(f => ({ ...f, checkOut: "" })); }} />
+                      </div>
+                      <div className="bk-field">
+                        <label className="bk-label">Check-Out *</label>
+                        <input className="bk-input" type="date" name="checkOut" value={form.checkOut}
+                          min={form.checkIn || new Date().toISOString().split("T")[0]}
+                          onChange={handleFormChange} />
+                      </div>
+                    </div>
+                    {nights > 0 && (
+                      <div style={{ marginTop:10, padding:"10px 14px", borderRadius:10, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, fontSize:13, color:"#c9a96e", fontWeight:600, display:"flex", alignItems:"center", gap:8 }}>
+                        🌙 {nights} night{nights!==1?"s":""} · {fmtDate(form.checkIn)} → {fmtDate(form.checkOut)}
+                      </div>
+                    )}
+                    <div style={{ marginTop:14 }}>
+                      <label className="bk-label" style={{ display:"block", marginBottom:8 }}>Number of Guests</label>
+                      <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+                        {[1,2,3,4,5,6,7,8].map(n => (
+                          <button key={n} onClick={() => setForm(f => ({ ...f, guests: String(n) }))} style={{
+                            width:40, height:40, borderRadius:10,
+                            border:`2px solid ${form.guests===String(n) ? "#c9a96e" : t.border}`,
+                            background: form.guests===String(n) ? "rgba(201,169,110,0.12)" : t.bgCard,
+                            color: form.guests===String(n) ? "#c9a96e" : t.textMuted,
+                            fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s",
+                          }}>{n}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="bk-section-title">🛏️ Choose Your Room</div>
+                    <div className="bk-g3">
+                      {[
+                        { id:"Deluxe Room",    icon:"✨", price:85000, desc:"King bed, lounge area, garden view" },
+                        { id:"Superior Room",  icon:"⭐", price:70000, desc:"Queen bed, modern en-suite" },
+                        { id:"Standard Room",  icon:"🛏️", price:60000, desc:"Double bed, all essentials" },
+                      ].map(r => (
+                        <div key={r.id} className={`bk-room-card${form.roomType===r.id?" sel":""}`} onClick={() => setForm(f => ({ ...f, roomType: r.id }))}>
+                          <div style={{ fontSize:24, marginBottom:8 }}>{r.icon}</div>
+                          <div style={{ fontWeight:700, fontSize:13, color: form.roomType===r.id ? "#c9a96e" : t.text, marginBottom:4 }}>{r.id}</div>
+                          <div style={{ fontSize:11, color:t.textFaint, lineHeight:1.5, marginBottom:10 }}>{r.desc}</div>
+                          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#c9a96e" }}>MWK {r.price.toLocaleString()}</div>
+                          <div style={{ fontSize:10, color:t.textFaint }}>per night</div>
+                          {nights > 0 && <div style={{ marginTop:8, fontSize:11, color: form.roomType===r.id ? "#c9a96e" : t.textFaint, fontWeight:600 }}>{nights}n = MWK {(r.price*nights).toLocaleString()}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
+                </div>
+              )}
+
+              {/* ── STEP 3: Preferences ── */}
+              {bookingStep === 3 && (
+                <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Preferences <span style={{ fontSize:14, fontWeight:400, color:t.textFaint }}>(all optional)</span></div>
+
+                  <div>
+                    <div className="bk-section-title">🍽️ Dietary Requirements</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
+                      {["No restrictions","Vegetarian","Vegan","Halal","Gluten-free","Kosher","Nut allergy","Dairy-free","Other"].map(d => (
+                        <button key={d} className={`bk-chip${form.dietary===d?" sel":""}`} onClick={() => setForm(f => ({ ...f, dietary: d }))}>{d}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="bk-section-title">✨ Add-ons & Extras</div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {[
+                        { field:"airportTransfer", icon:"✈️", label:"Airport Transfer",   desc:"Private car from Chileka/Kamuzu Airport" },
+                        { field:"earlyCheckIn",    icon:"🌅", label:"Early Check-in",      desc:"Access from 9 AM (subject to availability)" },
+                        { field:"lateCheckOut",    icon:"🌙", label:"Late Check-out",       desc:"Stay until 4 PM instead of 11 AM" },
+                        { field:"romanticSetup",   icon:"🌹", label:"Romantic Setup",       desc:"Rose petals, candles & champagne on arrival" },
+                        { field:"extraBed",        icon:"🛏️", label:"Extra Bed",            desc:"Additional rollaway bed in room" },
+                      ].map(({ field, icon, label, desc }) => (
+                        <div key={field} className={`bk-toggle${(form as any)[field]?" on":""}`} onClick={() => toggleAddon(field)}>
+                          <div className="bk-pill" />
+                          <span style={{ fontSize:18 }}>{icon}</span>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontWeight:600, fontSize:13, color:(form as any)[field] ? "#14a08c" : t.text, transition:"color .2s" }}>{label}</div>
+                            <div style={{ fontSize:11, color:t.textFaint, marginTop:1 }}>{desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bk-field">
+                    <label className="bk-label">Special Requests</label>
+                    <textarea className="bk-input" name="specialRequests" value={form.specialRequests} onChange={handleFormChange} rows={3} placeholder="Early check-in, extra pillows, quiet room, allergies…" style={{ resize:"none" }} />
+                  </div>
+                  {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
+                </div>
+              )}
+
+              {/* ── STEP 4: Payment ── */}
+              {bookingStep === 4 && (
+                <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+                  <div>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Secure Your Booking</div>
+                    <p style={{ fontSize:13, color:t.textMuted, lineHeight:1.7 }}>
+                      Pay a <strong style={{ color:"#c9a96e" }}>20% deposit</strong> now to confirm your reservation. The remaining balance is settled on arrival.
+                    </p>
+                  </div>
+
+                  {/* Ref */}
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"8px 16px", borderRadius:100, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, alignSelf:"flex-start" }}>
+                    <span style={{ fontSize:10, color:t.textFaint, letterSpacing:".1em", textTransform:"uppercase" }}>Ref</span>
+                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:14, color:"#c9a96e" }}>{savedBookingRef}</span>
+                  </div>
+
+                  {/* Cost breakdown */}
+                  <div style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:16, padding:"18px 20px" }}>
+                    <div style={{ fontSize:11, fontWeight:600, letterSpacing:".09em", textTransform:"uppercase", color:t.textFaint, marginBottom:14 }}>Cost Breakdown</div>
+                    {[
+                      { label:"Room",      value:form.roomType },
+                      { label:"Rate",      value:`MWK ${pricePerNight.toLocaleString()} / night` },
+                      { label:"Duration",  value:`${nights} night${nights!==1?"s":""}` },
+                      { label:"Check-In",  value:fmtDate(form.checkIn) },
+                      { label:"Check-Out", value:fmtDate(form.checkOut) },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bk-price-row">
+                        <span style={{ fontSize:13, color:t.textFaint }}>{label}</span>
+                        <span style={{ fontSize:13, fontWeight:500, color:t.text }}>{value}</span>
+                      </div>
+                    ))}
+                    <div className="bk-sep" />
+                    <div className="bk-price-row" style={{ paddingBottom:12 }}>
+                      <span style={{ fontSize:14, fontWeight:600, color:t.textMuted }}>Total Stay</span>
+                      <span style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:t.text }}>{fmtMWK(totalAmount)}</span>
+                    </div>
+                    {/* Deposit highlight */}
+                    <div style={{ background:"rgba(20,160,140,0.07)", border:"1px solid rgba(20,160,140,0.25)", borderRadius:12, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                      <div>
+                        <div style={{ fontWeight:700, fontSize:14, color:"#14a08c" }}>Deposit Due Now (20%)</div>
+                        <div style={{ fontSize:11, color:t.textFaint, marginTop:2 }}>Paid via PayChangu · secure online</div>
+                      </div>
+                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:900, color:"#14a08c" }}>{fmtMWK(depositAmount)}</div>
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", fontSize:13, color:t.textFaint }}>
+                      <span>Balance on Arrival</span>
+                      <span style={{ fontWeight:600, color:t.textMuted }}>{fmtMWK(balanceAmount)}</span>
+                    </div>
+                  </div>
+
+                  {/* Guest summary */}
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:16, padding:"12px 16px", borderRadius:12, background:isDark?"rgba(201,169,110,0.04)":"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}` }}>
+                    {[
+                      { l:"Guest",  v:`${form.firstName} ${form.lastName}` },
+                      { l:"Email",  v:form.email },
+                      { l:"Guests", v:form.guests },
+                      ...(form.occasion ? [{ l:"Occasion", v:form.occasion }] : []),
+                    ].map(({ l, v }) => (
+                      <div key={l}>
+                        <div style={{ fontSize:10, color:t.textFaint, textTransform:"uppercase", letterSpacing:".09em", marginBottom:2 }}>{l}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:t.text }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
+                </div>
+              )}
+
+              {/* ── STEP 5: Confirmed ── */}
+              {bookingStep === 5 && (
+                <div style={{ textAlign:"center", padding:"16px 0 24px" }}>
+                  <div style={{ fontSize:64, marginBottom:16, animation:"float 3s ease-in-out infinite" }}>✅</div>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:800, color:t.text, marginBottom:12 }}>
+                    Payment Confirmed!
+                  </div>
+                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:t.textMuted, lineHeight:1.7, maxWidth:420, margin:"0 auto 12px" }}>
+                    Thank you, <strong style={{ color:t.text }}>{form.firstName}</strong>! Your <strong style={{ color:"#c9a96e" }}>20% deposit</strong> of <strong style={{ color:"#14a08c" }}>{fmtMWK(depositAmount)}</strong> has been received and your {form.roomType} is confirmed.
+                  </p>
+                  <p style={{ fontSize:13, color:t.textFaint, marginBottom:24 }}>
+                    Receipt sent to <strong style={{ color:"#c9a96e" }}>{form.email}</strong>
+                  </p>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:10, marginBottom:24, padding:"9px 18px", borderRadius:100, background:"rgba(20,160,140,0.08)", border:"1px solid rgba(20,160,140,0.3)" }}>
+                    <span style={{ fontSize:10, color:t.textFaint, textTransform:"uppercase", letterSpacing:".1em" }}>Booking Ref</span>
+                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:15, color:"#14a08c" }}>{savedBookingRef}</span>
+                  </div>
+                  <div style={{ background:isDark?"rgba(255,255,255,0.025)":"rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 20px", maxWidth:380, margin:"0 auto 20px", textAlign:"left" }}>
+                    {[
+                      { l:"Room",          v:form.roomType },
+                      { l:"Check-In",      v:fmtDate(form.checkIn) },
+                      { l:"Check-Out",     v:fmtDate(form.checkOut) },
+                      { l:"Duration",      v:`${nights} night${nights!==1?"s":""}` },
+                      { l:"Total",         v:fmtMWK(totalAmount) },
+                      { l:"Deposit Paid",  v:fmtMWK(depositAmount), color:"#14a08c" },
+                      { l:"Balance Due",   v:fmtMWK(balanceAmount) },
+                    ].map(({ l, v, color }) => (
+                      <div key={l} style={{ display:"flex", justifyContent:"space-between", paddingBottom:8, marginBottom:8, borderBottom:`1px solid ${t.border}` }}>
+                        <span style={{ fontSize:12, color:t.textFaint }}>{l}</span>
+                        <span style={{ fontSize:13, fontWeight:700, color: color||t.text }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:12, color:t.textFaint }}>
+                    Questions? <a href="tel:+265998001909" style={{ color:"#c9a96e", textDecoration:"none", fontWeight:600 }}>+265 998 00 19 09</a>
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div className="bk-footer">
+              {bookingStep === 1 && (
+                <>
+                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={bookingNext}>Continue to Stay Details →</button>
+                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={closeBooking}>Cancel</button>
+                </>
+              )}
+              {bookingStep === 2 && (
+                <>
+                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={bookingNext}>Continue to Preferences →</button>
+                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(1); }}>← Back</button>
+                </>
+              )}
+              {bookingStep === 3 && (
+                <>
+                  <button className="btn-primary" style={{ flex:1, textAlign:"center", opacity:bookingLoading?0.7:1 }} onClick={saveAndPay} disabled={bookingLoading}>
+                    {bookingLoading ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:9 }}><span style={{ width:14,height:14,border:"2px solid rgba(0,0,0,.2)",borderTop:"2px solid #08090a",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite" }} />Saving…</span> : "Review & Pay →"}
+                  </button>
+                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button>
+                </>
+              )}
+              {bookingStep === 4 && (
+                <>
+                  <button className="btn-pay" onClick={openPayChangu}>
+                    🔒 Pay {fmtMWK(depositAmount)} Deposit via PayChangu
+                  </button>
+                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(3); }}>← Back</button>
+                </>
+              )}
+              {bookingStep === 4 && (
+                <div style={{ width:"100%", textAlign:"center", marginTop:-8 }}>
+                  <button onClick={markPaymentDone} style={{ background:"none", border:"none", color:t.textFaint, fontSize:11, cursor:"pointer", textDecoration:"underline", fontFamily:"'DM Sans',sans-serif" }}>
+                    [Test: simulate successful payment]
+                  </button>
+                </div>
+              )}
+              {bookingStep === 5 && (
+                <>
+                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={closeBooking}>Close</button>
+                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <footer style={{
         borderTop: `1px solid ${t.border}`,
         padding: "64px 32px 40px",
