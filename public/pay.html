@@ -180,6 +180,31 @@
         document.getElementById("pay-btn").textContent = "🔒 Pay Deposit via PayChangu";
       }, 5000);
     }
+
+    // Intercept PayChangu's return_url redirect — instead of navigating away, notify parent
+    const _origAssign  = window.location.assign.bind(window.location);
+    const _origReplace = window.location.replace.bind(window.location);
+    const _handleReturnUrl = (url) => {
+      if (url && url.includes("status=paid")) {
+        // Payment succeeded — tell the parent React app
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: "PAYCHANGU_SUCCESS", bookingRef, firestoreId }, "*");
+        }
+        return true;
+      }
+      return false;
+    };
+    try {
+      window.location.assign  = (url) => { if (!_handleReturnUrl(url)) _origAssign(url); };
+      window.location.replace = (url) => { if (!_handleReturnUrl(url)) _origReplace(url); };
+    } catch(e) {}
+
+    // Also intercept window.open (PayChangu sometimes uses this for the return)
+    const _origOpen = window.open;
+    window.open = (url, ...args) => {
+      if (url && url.includes("status=paid")) { _handleReturnUrl(url); return null; }
+      return _origOpen.call(window, url, ...args);
+    };
   </script>
 </body>
 </html>

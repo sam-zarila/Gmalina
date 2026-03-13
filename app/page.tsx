@@ -237,6 +237,7 @@ export default function GmalinaCourtWebsite() {
   const [firestoreId, setFirestoreId]       = useState("");
   const [savedBookingRef, setSavedBookingRef] = useState("");
   const [savedTxRef, setSavedTxRef]         = useState("");
+  const [payUrl, setPayUrl]                 = useState("");
 
   // ── Room pricing ──
   const ROOM_PRICES: Record<string, number> = {
@@ -425,7 +426,7 @@ export default function GmalinaCourtWebsite() {
       phone:    form.phone.trim(),
       pk:       pubKey,
     });
-    window.open(`/pay.html?${p.toString()}`, "_blank");
+    setPayUrl(`/pay.html?${p.toString()}`);
   };
 
   const markPaymentDone = async () => {
@@ -438,6 +439,18 @@ export default function GmalinaCourtWebsite() {
     }
     setBookingStep(5);
   };
+
+  // Listen for payment success message from pay.html iframe
+  useEffect(() => {
+    const handler = async (e: MessageEvent) => {
+      if (e.data?.type === "PAYCHANGU_SUCCESS") {
+        setPayUrl(""); // close iframe overlay
+        await markPaymentDone();
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [firestoreId]); // eslint-disable-line
 
   useEffect(() => {
     const saved = localStorage.getItem("gmalina-theme");
@@ -877,6 +890,31 @@ export default function GmalinaCourtWebsite() {
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
         .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
+        /* ── PAY OVERLAY ── */
+        .pay-overlay {
+          position: fixed; inset: 0; z-index: 20000;
+          background: rgba(0,0,0,0.88); backdrop-filter: blur(16px);
+          display: flex; align-items: center; justify-content: center;
+          animation: fadeIn 0.2s ease;
+        }
+        .pay-overlay-inner {
+          position: relative;
+          width: 95vw; max-width: 500px;
+          height: 90vh;
+          border-radius: 24px; overflow: hidden;
+          box-shadow: 0 48px 120px rgba(0,0,0,0.7);
+          border: 1px solid rgba(201,169,110,0.2);
+        }
+        .pay-overlay-close {
+          position: absolute; top: 12px; right: 12px; z-index: 10;
+          width: 32px; height: 32px; border-radius: 50%;
+          background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15);
+          color: #fff; font-size: 18px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.2s;
+        }
+        .pay-overlay-close:hover { background: rgba(201,169,110,0.3); }
+
         /* ── PAYCHANGU WRAPPER ── */
         #wrapper {
           position: fixed !important;
@@ -907,148 +945,146 @@ export default function GmalinaCourtWebsite() {
           border: none !important;
           box-shadow: 0 32px 80px rgba(0,0,0,0.6) !important;
         }
+        /* ── BOOKING MODAL ── */
+        * { box-sizing: border-box; }
         .booking-backdrop {
           position: fixed; inset: 0; z-index: 10000;
-          background: rgba(0,0,0,0.82); backdrop-filter: blur(16px);
-          display: flex; align-items: center; justify-content: center;
-          padding: 16px; animation: fadeIn 0.2s ease; overflow-y: auto;
+          background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);
+          display: flex; align-items: flex-end; justify-content: center;
+          overflow: hidden; animation: fadeIn 0.2s ease;
+        }
+        @media (min-width: 600px) {
+          .booking-backdrop { align-items: center; padding: 16px; overflow-y: auto; }
         }
         .booking-modal {
-          background: ${isDark ? "#0d0e10" : "#ffffff"};
+          width: 100%; max-width: 100%;
+          background: ${isDark ? "#0d0e10" : "#fff"};
           border: 1px solid ${t.borderGold};
-          border-radius: 28px; width: 100%; max-width: 740px;
-          position: relative; margin: auto;
-          box-shadow: 0 48px 120px rgba(0,0,0,0.7);
-          animation: slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+          border-radius: 18px 18px 0 0;
+          max-height: 93dvh; max-height: 93vh;
+          display: flex; flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 -8px 40px rgba(0,0,0,0.4);
+          animation: bkSlideUp 0.28s cubic-bezier(0.32,0.72,0,1);
         }
-        @keyframes slideUp { from { opacity:0; transform:translateY(40px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @media (min-width: 600px) {
+          .booking-modal {
+            max-width: 660px; border-radius: 20px;
+            max-height: 90dvh; max-height: 90vh;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+            animation: bkFadeUp 0.28s cubic-bezier(0.34,1.2,0.64,1);
+          }
+        }
+        @keyframes bkSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes bkFadeUp  { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+        .bk-handle { width:32px; height:3px; border-radius:2px; background:${t.border}; margin:8px auto 0; flex-shrink:0; }
+        @media (min-width:600px) { .bk-handle { display:none; } }
+
         .bk-header {
-          padding: 28px 36px 22px;
+          padding: 10px 14px 10px;
           border-bottom: 1px solid ${t.border};
-          display: flex; align-items: center; justify-content: space-between;
+          flex-shrink: 0;
         }
-        .bk-body   { padding: 28px 36px; max-height: 72vh; overflow-y: auto; }
-        .bk-footer {
-          padding: 20px 36px 28px;
-          border-top: 1px solid ${t.border};
-          display: flex; gap: 12px; align-items: center;
+        @media (min-width:600px) { .bk-header { padding: 18px 24px 14px; } }
+
+        .bk-steps {
+          display: flex; align-items: center;
+          margin-top: 10px; gap: 0; width: 100%;
+          overflow: hidden;
         }
-        .bk-body::-webkit-scrollbar { width: 3px; }
-        .bk-body::-webkit-scrollbar-thumb { background: rgba(201,169,110,0.3); border-radius: 2px; }
-        .booking-close {
-          width: 34px; height: 34px; border-radius: 50%;
-          background: ${t.bgCard}; border: 1px solid ${t.border};
-          color: ${t.textMuted}; cursor: pointer; font-size: 18px;
-          display: flex; align-items: center; justify-content: center;
-          transition: all 0.2s; flex-shrink: 0;
-        }
-        .booking-close:hover { border-color: #c9a96e; color: #c9a96e; transform: scale(1.08); }
-        .bk-input {
-          width: 100%; background: ${t.inputBg};
-          border: 1.5px solid ${t.inputBorder};
-          border-radius: 12px; padding: 12px 15px;
-          color: ${t.text}; font-family: 'DM Sans', sans-serif;
-          font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-          appearance: none;
-        }
-        .bk-input:focus { border-color: #c9a96e; box-shadow: 0 0 0 3px rgba(201,169,110,0.1); }
-        .bk-input::placeholder { color: ${t.textFaint}; }
-        .bk-input option { background: ${isDark ? "#0d0e10" : "#fff"}; color: ${t.text}; }
-        .bk-label {
-          font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
-          text-transform: uppercase; color: ${t.textFaint}; margin-bottom: 5px; display: block;
-        }
-        .bk-field { display: flex; flex-direction: column; gap: 4px; }
-        .bk-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .bk-g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        .bk-error {
-          background: rgba(220,60,60,0.09); border: 1px solid rgba(220,60,60,0.28);
-          border-radius: 10px; padding: 11px 14px;
-          color: #e05555; font-family: 'DM Sans', sans-serif; font-size: 13px;
-          display: flex; align-items: center; gap: 7px; margin-top: 14px;
-        }
-        .bk-section-title {
-          font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
-          color: ${t.textMuted}; margin-bottom: 12px; margin-top: 4px;
-          display: flex; align-items: center; gap: 7px;
-        }
-        .bk-room-card {
-          border: 2px solid ${t.border}; border-radius: 16px; padding: 16px;
-          cursor: pointer; transition: all 0.22s;
-          background: ${isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"};
-          position: relative; overflow: hidden;
-        }
-        .bk-room-card:hover { border-color: rgba(201,169,110,0.35); }
-        .bk-room-card.sel {
-          border-color: #c9a96e;
-          background: rgba(201,169,110,0.07);
-          box-shadow: 0 0 0 1px rgba(201,169,110,0.18), 0 6px 24px rgba(201,169,110,0.1);
-        }
-        .bk-room-card.sel::after {
-          content:"✓"; position:absolute; top:10px; right:10px;
-          width:20px; height:20px; border-radius:50%;
-          background:linear-gradient(135deg,#c9a96e,#e8d5a3);
-          color:#08090a; font-size:10px; font-weight:800;
+        .bk-step { display:flex; align-items:center; flex:1; min-width:0; }
+        .bk-step:last-child { flex:0 0 auto; }
+        .bk-step-dot {
+          width:20px; height:20px; border-radius:50%; flex-shrink:0;
           display:flex; align-items:center; justify-content:center;
+          font-size:9px; font-weight:800; border:1.5px solid ${t.border};
+          background:${isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.04)"};
+          color:${t.textFaint};
         }
-        .bk-toggle {
-          display: flex; align-items: center; gap: 12px;
-          padding: 11px 14px; border-radius: 12px;
-          border: 1.5px solid ${t.border};
-          background: ${isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"};
-          cursor: pointer; transition: all 0.2s; user-select: none;
+        .bk-step-dot.done { background:linear-gradient(135deg,#c9a96e,#e8d5a3); border-color:#c9a96e; color:#08090a; }
+        .bk-step-dot.active { background:rgba(201,169,110,0.15); border-color:#c9a96e; color:#c9a96e; }
+        .bk-step-name {
+          font-size:9px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+          color:${t.textFaint}; margin-left:4px; white-space:nowrap;
+          display:none;
         }
-        .bk-toggle:hover { border-color: rgba(201,169,110,0.3); }
-        .bk-toggle.on { border-color: rgba(20,160,140,0.35); background: rgba(20,160,140,0.05); }
-        .bk-pill {
-          width: 38px; height: 21px; border-radius: 11px;
-          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
-          position: relative; transition: all 0.3s; flex-shrink: 0;
+        .bk-step-name.active { color:#c9a96e; display:block; }
+        @media (min-width:400px) { .bk-step-name { display:block; } }
+        .bk-step-line { flex:1; height:1px; background:${t.border}; margin:0 4px; }
+        .bk-step-line.done { background:rgba(201,169,110,0.4); }
+
+        .bk-body {
+          flex:1; overflow-y:auto; overflow-x:hidden;
+          padding: 14px 14px 6px;
+          -webkit-overflow-scrolling: touch;
         }
-        .bk-pill::after {
-          content:''; position:absolute; width:13px; height:13px; border-radius:50%;
-          background: rgba(244,240,234,0.35); top:3px; left:3px;
-          transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.3s;
+        @media (min-width:600px) { .bk-body { padding: 20px 24px 8px; } }
+        .bk-body::-webkit-scrollbar { width:3px; }
+        .bk-body::-webkit-scrollbar-thumb { background:rgba(201,169,110,0.25); border-radius:2px; }
+
+        .bk-footer {
+          flex-shrink:0; padding:10px 14px 16px;
+          border-top:1px solid ${t.border};
+          display:flex; flex-direction:column; gap:8px;
         }
+        @media (min-width:600px) { .bk-footer { padding:12px 24px 18px; flex-direction:row; gap:10px; } }
+        .bk-footer > * { width:100% !important; justify-content:center; }
+        @media (min-width:600px) {
+          .bk-footer > .btn-primary { flex:1; width:auto !important; }
+          .bk-footer > .btn-outline  { flex:0 0 auto; width:auto !important; }
+          .bk-footer > .btn-pay     { flex:1; width:auto !important; }
+        }
+
+        .booking-close {
+          width:28px; height:28px; border-radius:50%; flex-shrink:0;
+          background:${t.bgCard}; border:1px solid ${t.border};
+          color:${t.textMuted}; cursor:pointer; font-size:16px;
+          display:flex; align-items:center; justify-content:center; transition:all .2s;
+        }
+        .booking-close:hover { border-color:#c9a96e; color:#c9a96e; }
+
+        .bk-label { font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:${t.textFaint}; margin-bottom:4px; display:block; }
+        .bk-field { display:flex; flex-direction:column; gap:3px; }
+        .bk-input {
+          width:100%; background:${t.inputBg};
+          border:1.5px solid ${t.inputBorder}; border-radius:10px;
+          padding:11px 12px; color:${t.text};
+          font-family:'DM Sans',sans-serif; font-size:16px;
+          outline:none; transition:border-color .2s;
+          appearance:none; -webkit-appearance:none;
+        }
+        .bk-input:focus { border-color:#c9a96e; box-shadow:0 0 0 3px rgba(201,169,110,0.1); }
+        .bk-input::placeholder { color:${t.textFaint}; }
+        .bk-input option { background:${isDark?"#0d0e10":"#fff"}; color:${t.text}; }
+        .bk-g2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        @media (max-width:340px) { .bk-g2 { grid-template-columns:1fr; } }
+        .bk-g3 { display:grid; grid-template-columns:1fr; gap:8px; }
+        @media (min-width:480px) { .bk-g3 { grid-template-columns:repeat(3,1fr); } }
+        .bk-sep { height:1px; background:${t.border}; margin:10px 0; }
+        .bk-section-title { font-size:11px; font-weight:600; letter-spacing:.05em; color:${t.textMuted}; margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+        .bk-error { background:rgba(220,60,60,0.08); border:1px solid rgba(220,60,60,0.25); border-radius:8px; padding:9px 12px; color:#e05555; font-size:12px; display:flex; align-items:flex-start; gap:6px; margin-top:10px; word-break:break-word; }
+        .bk-room-card { border:2px solid ${t.border}; border-radius:12px; padding:12px; cursor:pointer; transition:all .2s; background:${isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"}; position:relative; overflow:hidden; }
+        .bk-room-card:hover { border-color:rgba(201,169,110,0.4); }
+        .bk-room-card.sel { border-color:#c9a96e; background:rgba(201,169,110,0.07); }
+        .bk-room-card.sel::after { content:"✓"; position:absolute; top:7px; right:7px; width:16px; height:16px; border-radius:50%; background:linear-gradient(135deg,#c9a96e,#e8d5a3); color:#08090a; font-size:8px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+        .bk-toggle { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:10px; border:1.5px solid ${t.border}; background:${isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"}; cursor:pointer; transition:all .2s; user-select:none; width:100%; }
+        .bk-toggle:hover { border-color:rgba(201,169,110,0.3); }
+        .bk-toggle.on { border-color:rgba(20,160,140,0.35); background:rgba(20,160,140,0.05); }
+        .bk-pill { width:32px; height:18px; border-radius:9px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); position:relative; transition:all .25s; flex-shrink:0; }
+        .bk-pill::after { content:''; position:absolute; width:11px; height:11px; border-radius:50%; background:rgba(244,240,234,0.3); top:3px; left:3px; transition:transform .25s,background .25s; }
         .bk-toggle.on .bk-pill { background:rgba(20,160,140,0.3); border-color:rgba(20,160,140,0.4); }
-        .bk-toggle.on .bk-pill::after { transform:translateX(17px); background:#14a08c; }
-        .bk-chip {
-          padding: 6px 13px; border-radius: 100px;
-          border: 1.5px solid ${t.border};
-          background: transparent;
-          font-size: 12px; font-weight: 500; cursor: pointer;
-          transition: all 0.2s; color: ${t.textMuted};
-        }
-        .bk-chip:hover { border-color: rgba(201,169,110,0.3); color: #c9a96e; }
-        .bk-chip.sel { background: rgba(201,169,110,0.1); border-color: #c9a96e; color: #c9a96e; font-weight: 600; }
-        .bk-step-row {
-          display: flex; gap: 6px; align-items: center; margin-bottom: 22px;
-        }
-        .bk-sep { height: 1px; background: ${t.border}; margin: 18px 0; }
-        .bk-price-row {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 10px 0; border-bottom: 1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"};
-        }
-        .bk-price-row:last-child { border-bottom: none; }
-        .btn-pay {
-          background: linear-gradient(135deg, #14a08c, #1dc9ae);
-          color: #fff; border: none;
-          padding: 14px 28px; border-radius: 100px;
-          font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700;
-          cursor: pointer; transition: all 0.3s; letter-spacing: 0.02em;
-          display: inline-flex; align-items: center; gap: 8px;
-          flex: 1; justify-content: center;
-          box-shadow: 0 8px 32px rgba(20,160,140,0.3);
-        }
-        .btn-pay:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(20,160,140,0.4); }
-        .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        @media (max-width: 600px) {
-          .bk-g2, .bk-g3 { grid-template-columns: 1fr !important; }
-          .bk-header { padding: 22px 22px 18px !important; }
-          .bk-body   { padding: 22px !important; }
-          .bk-footer { padding: 18px 22px 26px !important; flex-direction: column !important; }
-          .bk-footer .btn-primary, .bk-footer .btn-outline, .bk-footer .btn-pay { width: 100%; text-align: center; }
-        }
+        .bk-toggle.on .bk-pill::after { transform:translateX(14px); background:#14a08c; }
+        .bk-chip { padding:5px 10px; border-radius:100px; border:1.5px solid ${t.border}; background:transparent; font-size:12px; font-weight:500; cursor:pointer; transition:all .2s; color:${t.textMuted}; }
+        .bk-chip:hover { border-color:rgba(201,169,110,0.3); color:#c9a96e; }
+        .bk-chip.sel { background:rgba(201,169,110,0.1); border-color:#c9a96e; color:#c9a96e; font-weight:600; }
+        .bk-price-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid ${isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)"}; gap:8px; }
+        .bk-price-row:last-child { border-bottom:none; }
+        .bk-price-row > span:last-child { text-align:right; }
+        .btn-pay { background:linear-gradient(135deg,#14a08c,#1dc9ae); color:#fff; border:none; padding:13px 18px; border-radius:100px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all .3s; display:flex; align-items:center; gap:7px; width:100%; justify-content:center; box-shadow:0 6px 24px rgba(20,160,140,0.3); }
+        .btn-pay:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(20,160,140,0.4); }
+        .btn-pay:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
         .mobile-theme-toggle { display: none !important; }
         .mobile-book-btn-nav { display: none !important; }
 
@@ -1991,86 +2027,79 @@ export default function GmalinaCourtWebsite() {
         </div>
       </section>
 
+      {/* ─── PAY OVERLAY (iframe — keeps payment inside the website) ─── */}
+      {payUrl && (
+        <div className="pay-overlay" onClick={() => setPayUrl("")}>
+          <div className="pay-overlay-inner" onClick={e => e.stopPropagation()}>
+            <button className="pay-overlay-close" onClick={() => setPayUrl("")}>×</button>
+            <iframe
+              src={payUrl}
+              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+              allow="payment"
+              title="Secure Payment"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ─── BOOKING MODAL ─── */}
       {bookingOpen && (
         <div className="booking-backdrop" onClick={closeBooking}>
           <div className="booking-modal" onClick={e => e.stopPropagation()}>
 
+            {/* Drag handle (mobile) */}
+            <div className="bk-handle" />
+
             {/* Header */}
             <div className="bk-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏛️</div>
-                <div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 700, color: t.text, lineHeight: 1.1 }}>Reserve Your Stay</div>
-                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: t.textFaint, marginTop: 2 }}>Gmalina Court Lodge · Liwonde, Malawi</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
+                  <div style={{ width:26, height:26, borderRadius:6, background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0 }}>🏛️</div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, color:t.text, lineHeight:1.1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>Reserve Your Stay</div>
+                    <div style={{ fontSize:10, color:t.textFaint }}>Gmalina Court Lodge</div>
+                  </div>
                 </div>
+                <button className="booking-close" onClick={closeBooking}>×</button>
               </div>
-              {/* Step indicator pills */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                {["Details","Stay","Extras","Pay"].map((label, i) => {
-                  const n = i + 1;
-                  const active = bookingStep === n;
-                  const done   = bookingStep > n;
-                  return (
-                    <div key={label} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                      <div style={{
-                        display:"flex", alignItems:"center", gap:5,
-                        padding:"4px 8px", borderRadius:100,
-                        background: active ? "rgba(201,169,110,0.1)" : "transparent",
-                        border: `1px solid ${active ? "rgba(201,169,110,0.3)" : "transparent"}`,
-                      }}>
-                        <div style={{
-                          width:18, height:18, borderRadius:"50%", flexShrink:0,
-                          background: done ? "linear-gradient(135deg,#c9a96e,#e8d5a3)" : active ? "rgba(201,169,110,0.2)" : "rgba(255,255,255,0.06)",
-                          border:`1px solid ${done||active ? "#c9a96e" : t.border}`,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          fontSize:9, fontWeight:700,
-                          color: done ? "#08090a" : active ? "#c9a96e" : t.textFaint,
-                        }}>{done ? "✓" : n}</div>
-                        <span style={{ fontSize:10, fontWeight:500, color: active ? "#c9a96e" : t.textFaint }}>{label}</span>
-                      </div>
-                      {i < 3 && <div style={{ width:10, height:1, background: t.border }} />}
-                    </div>
-                  );
-                })}
-              </div>
-              <button className="booking-close" onClick={closeBooking}>×</button>
-            </div>
 
+              {/* Step progress */}
+              {bookingStep < 5 && (
+                <div className="bk-steps">
+                  {(["Details","Stay","Extras","Pay"] as const).map((label, i) => {
+                    const n = i + 1;
+                    const done   = bookingStep > n;
+                    const active = bookingStep === n;
+                    return (
+                      <div key={label} className="bk-step">
+                        <div className={`bk-step-dot${done?" done":active?" active":""}`}>{done ? "✓" : n}</div>
+                        <span className={`bk-step-name${active?" active":""}`}>{label}</span>
+                        {i < 3 && <div className={`bk-step-line${done?" done":""}`} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Body */}
             <div className="bk-body">
 
-              {/* ── STEP 1: Personal details ── */}
+              {/* ── STEP 1 ── */}
               {bookingStep === 1 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Your Details</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,4vw,19px)", fontWeight:700, color:t.text }}>Your Details</div>
                   <div className="bk-g2">
-                    <div className="bk-field">
-                      <label className="bk-label">First Name *</label>
-                      <input className="bk-input" name="firstName" value={form.firstName} onChange={handleFormChange} placeholder="James" />
-                    </div>
-                    <div className="bk-field">
-                      <label className="bk-label">Last Name *</label>
-                      <input className="bk-input" name="lastName" value={form.lastName} onChange={handleFormChange} placeholder="Banda" />
-                    </div>
+                    <div className="bk-field"><label className="bk-label">First Name *</label><input className="bk-input" name="firstName" value={form.firstName} onChange={handleFormChange} placeholder="James" /></div>
+                    <div className="bk-field"><label className="bk-label">Last Name *</label><input className="bk-input" name="lastName" value={form.lastName} onChange={handleFormChange} placeholder="Banda" /></div>
                   </div>
                   <div className="bk-g2">
-                    <div className="bk-field">
-                      <label className="bk-label">Email Address *</label>
-                      <input className="bk-input" type="email" name="email" value={form.email} onChange={handleFormChange} placeholder="your@email.com" />
-                    </div>
-                    <div className="bk-field">
-                      <label className="bk-label">Phone Number *</label>
-                      <input className="bk-input" type="tel" name="phone" value={form.phone} onChange={handleFormChange} placeholder="+265 998 001 909" />
-                    </div>
+                    <div className="bk-field"><label className="bk-label">Email *</label><input className="bk-input" type="email" name="email" value={form.email} onChange={handleFormChange} placeholder="your@email.com" /></div>
+                    <div className="bk-field"><label className="bk-label">Phone *</label><input className="bk-input" type="tel" name="phone" value={form.phone} onChange={handleFormChange} placeholder="+265 998 001 909" /></div>
                   </div>
+                  <div className="bk-field"><label className="bk-label">Country (optional)</label><input className="bk-input" name="country" value={form.country} onChange={handleFormChange} placeholder="e.g. Malawi, United Kingdom…" /></div>
                   <div className="bk-field">
-                    <label className="bk-label">Country (Optional)</label>
-                    <input className="bk-input" name="country" value={form.country} onChange={handleFormChange} placeholder="e.g. Malawi, United Kingdom…" />
-                  </div>
-                  <div className="bk-field">
-                    <label className="bk-label">Occasion (Optional)</label>
+                    <label className="bk-label">Occasion (optional)</label>
                     <select className="bk-input" name="occasion" value={form.occasion} onChange={handleFormChange}>
                       <option value="">Select occasion…</option>
                       {["Leisure / Holiday","Business Trip","Safari / Wildlife","Anniversary / Romance","Family Vacation","Wedding / Honeymoon","Corporate Event"].map(o => <option key={o}>{o}</option>)}
@@ -2080,43 +2109,27 @@ export default function GmalinaCourtWebsite() {
                 </div>
               )}
 
-              {/* ── STEP 2: Stay details ── */}
+              {/* ── STEP 2 ── */}
               {bookingStep === 2 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Stay Details</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,4vw,19px)", fontWeight:700, color:t.text }}>Stay Details</div>
 
                   <div>
                     <div className="bk-section-title">📅 Dates & Guests</div>
                     <div className="bk-g2">
-                      <div className="bk-field">
-                        <label className="bk-label">Check-In *</label>
-                        <input className="bk-input" type="date" name="checkIn" value={form.checkIn}
-                          min={new Date().toISOString().split("T")[0]}
-                          onChange={e => { handleFormChange(e); if (form.checkOut && e.target.value >= form.checkOut) setForm(f => ({ ...f, checkOut: "" })); }} />
-                      </div>
-                      <div className="bk-field">
-                        <label className="bk-label">Check-Out *</label>
-                        <input className="bk-input" type="date" name="checkOut" value={form.checkOut}
-                          min={form.checkIn || new Date().toISOString().split("T")[0]}
-                          onChange={handleFormChange} />
-                      </div>
+                      <div className="bk-field"><label className="bk-label">Check-In *</label><input className="bk-input" type="date" name="checkIn" value={form.checkIn} min={new Date().toISOString().split("T")[0]} onChange={e => { handleFormChange(e); if (form.checkOut && e.target.value >= form.checkOut) setForm(f => ({ ...f, checkOut:"" })); }} /></div>
+                      <div className="bk-field"><label className="bk-label">Check-Out *</label><input className="bk-input" type="date" name="checkOut" value={form.checkOut} min={form.checkIn || new Date().toISOString().split("T")[0]} onChange={handleFormChange} /></div>
                     </div>
                     {nights > 0 && (
-                      <div style={{ marginTop:10, padding:"10px 14px", borderRadius:10, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, fontSize:13, color:"#c9a96e", fontWeight:600, display:"flex", alignItems:"center", gap:8 }}>
+                      <div style={{ marginTop:8, padding:"8px 12px", borderRadius:8, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, fontSize:12, color:"#c9a96e", fontWeight:600 }}>
                         🌙 {nights} night{nights!==1?"s":""} · {fmtDate(form.checkIn)} → {fmtDate(form.checkOut)}
                       </div>
                     )}
-                    <div style={{ marginTop:14 }}>
-                      <label className="bk-label" style={{ display:"block", marginBottom:8 }}>Number of Guests</label>
-                      <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+                    <div style={{ marginTop:12 }}>
+                      <label className="bk-label" style={{ marginBottom:7 }}>Number of Guests</label>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                         {[1,2,3,4,5,6,7,8].map(n => (
-                          <button key={n} onClick={() => setForm(f => ({ ...f, guests: String(n) }))} style={{
-                            width:40, height:40, borderRadius:10,
-                            border:`2px solid ${form.guests===String(n) ? "#c9a96e" : t.border}`,
-                            background: form.guests===String(n) ? "rgba(201,169,110,0.12)" : t.bgCard,
-                            color: form.guests===String(n) ? "#c9a96e" : t.textMuted,
-                            fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s",
-                          }}>{n}</button>
+                          <button key={n} onClick={() => setForm(f => ({ ...f, guests:String(n) }))} style={{ width:38, height:38, borderRadius:9, border:`2px solid ${form.guests===String(n)?"#c9a96e":t.border}`, background:form.guests===String(n)?"rgba(201,169,110,0.12)":t.bgCard, color:form.guests===String(n)?"#c9a96e":t.textMuted, fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s" }}>{n}</button>
                         ))}
                       </div>
                     </div>
@@ -2126,17 +2139,17 @@ export default function GmalinaCourtWebsite() {
                     <div className="bk-section-title">🛏️ Choose Your Room</div>
                     <div className="bk-g3">
                       {[
-                        { id:"Deluxe Room",    icon:"✨", price:85000, desc:"King bed, lounge area, garden view" },
-                        { id:"Superior Room",  icon:"⭐", price:70000, desc:"Queen bed, modern en-suite" },
-                        { id:"Standard Room",  icon:"🛏️", price:60000, desc:"Double bed, all essentials" },
+                        { id:"Deluxe Room",   icon:"✨", price:85000, desc:"King bed, lounge area, garden view" },
+                        { id:"Superior Room", icon:"⭐", price:70000, desc:"Queen bed, modern en-suite" },
+                        { id:"Standard Room", icon:"🛏️", price:60000, desc:"Double bed, all essentials" },
                       ].map(r => (
-                        <div key={r.id} className={`bk-room-card${form.roomType===r.id?" sel":""}`} onClick={() => setForm(f => ({ ...f, roomType: r.id }))}>
-                          <div style={{ fontSize:24, marginBottom:8 }}>{r.icon}</div>
-                          <div style={{ fontWeight:700, fontSize:13, color: form.roomType===r.id ? "#c9a96e" : t.text, marginBottom:4 }}>{r.id}</div>
-                          <div style={{ fontSize:11, color:t.textFaint, lineHeight:1.5, marginBottom:10 }}>{r.desc}</div>
-                          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#c9a96e" }}>MWK {r.price.toLocaleString()}</div>
-                          <div style={{ fontSize:10, color:t.textFaint }}>per night</div>
-                          {nights > 0 && <div style={{ marginTop:8, fontSize:11, color: form.roomType===r.id ? "#c9a96e" : t.textFaint, fontWeight:600 }}>{nights}n = MWK {(r.price*nights).toLocaleString()}</div>}
+                        <div key={r.id} className={`bk-room-card${form.roomType===r.id?" sel":""}`} onClick={() => setForm(f => ({ ...f, roomType:r.id }))}>
+                          <div style={{ fontSize:20, marginBottom:6 }}>{r.icon}</div>
+                          <div style={{ fontWeight:700, fontSize:12, color:form.roomType===r.id?"#c9a96e":t.text, marginBottom:3 }}>{r.id}</div>
+                          <div style={{ fontSize:10, color:t.textFaint, lineHeight:1.4, marginBottom:8 }}>{r.desc}</div>
+                          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:700, color:"#c9a96e" }}>MWK {r.price.toLocaleString()}</div>
+                          <div style={{ fontSize:10, color:t.textFaint }}>/ night</div>
+                          {nights > 0 && <div style={{ marginTop:6, fontSize:10, color:form.roomType===r.id?"#c9a96e":t.textFaint, fontWeight:600 }}>{nights}n = MWK {(r.price*nights).toLocaleString()}</div>}
                         </div>
                       ))}
                     </div>
@@ -2145,35 +2158,35 @@ export default function GmalinaCourtWebsite() {
                 </div>
               )}
 
-              {/* ── STEP 3: Preferences ── */}
+              {/* ── STEP 3 ── */}
               {bookingStep === 3 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Preferences <span style={{ fontSize:14, fontWeight:400, color:t.textFaint }}>(all optional)</span></div>
+                <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,4vw,19px)", fontWeight:700, color:t.text }}>Preferences <span style={{ fontSize:13, fontWeight:400, color:t.textFaint }}>(optional)</span></div>
 
                   <div>
                     <div className="bk-section-title">🍽️ Dietary Requirements</div>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                       {["No restrictions","Vegetarian","Vegan","Halal","Gluten-free","Kosher","Nut allergy","Dairy-free","Other"].map(d => (
-                        <button key={d} className={`bk-chip${form.dietary===d?" sel":""}`} onClick={() => setForm(f => ({ ...f, dietary: d }))}>{d}</button>
+                        <button key={d} className={`bk-chip${form.dietary===d?" sel":""}`} onClick={() => setForm(f => ({ ...f, dietary:d }))}>{d}</button>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <div className="bk-section-title">✨ Add-ons & Extras</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    <div className="bk-section-title">✨ Add-ons</div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
                       {[
                         { field:"airportTransfer", icon:"✈️", label:"Airport Transfer",   desc:"Private car from Chileka/Kamuzu Airport" },
                         { field:"earlyCheckIn",    icon:"🌅", label:"Early Check-in",      desc:"Access from 9 AM (subject to availability)" },
                         { field:"lateCheckOut",    icon:"🌙", label:"Late Check-out",       desc:"Stay until 4 PM instead of 11 AM" },
-                        { field:"romanticSetup",   icon:"🌹", label:"Romantic Setup",       desc:"Rose petals, candles & champagne on arrival" },
+                        { field:"romanticSetup",   icon:"🌹", label:"Romantic Setup",       desc:"Rose petals, candles & champagne" },
                         { field:"extraBed",        icon:"🛏️", label:"Extra Bed",            desc:"Additional rollaway bed in room" },
                       ].map(({ field, icon, label, desc }) => (
                         <div key={field} className={`bk-toggle${(form as any)[field]?" on":""}`} onClick={() => toggleAddon(field)}>
                           <div className="bk-pill" />
-                          <span style={{ fontSize:18 }}>{icon}</span>
-                          <div style={{ flex:1 }}>
-                            <div style={{ fontWeight:600, fontSize:13, color:(form as any)[field] ? "#14a08c" : t.text, transition:"color .2s" }}>{label}</div>
+                          <span style={{ fontSize:16 }}>{icon}</span>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:600, fontSize:13, color:(form as any)[field]?"#14a08c":t.text }}>{label}</div>
                             <div style={{ fontSize:11, color:t.textFaint, marginTop:1 }}>{desc}</div>
                           </div>
                         </div>
@@ -2183,31 +2196,27 @@ export default function GmalinaCourtWebsite() {
 
                   <div className="bk-field">
                     <label className="bk-label">Special Requests</label>
-                    <textarea className="bk-input" name="specialRequests" value={form.specialRequests} onChange={handleFormChange} rows={3} placeholder="Early check-in, extra pillows, quiet room, allergies…" style={{ resize:"none" }} />
+                    <textarea className="bk-input" name="specialRequests" value={form.specialRequests} onChange={handleFormChange} rows={3} placeholder="Early check-in, extra pillows, quiet room…" style={{ resize:"none" }} />
                   </div>
                   {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
                 </div>
               )}
 
-              {/* ── STEP 4: Payment ── */}
+              {/* ── STEP 4 ── */}
               {bookingStep === 4 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
-                  <div>
-                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text, marginBottom:4 }}>Secure Your Booking</div>
-                    <p style={{ fontSize:13, color:t.textMuted, lineHeight:1.7 }}>
-                      Pay a <strong style={{ color:"#c9a96e" }}>20% deposit</strong> now to confirm your reservation. The remaining balance is settled on arrival.
-                    </p>
-                  </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,4vw,19px)", fontWeight:700, color:t.text }}>Secure Your Booking</div>
+                  <p style={{ fontSize:13, color:t.textMuted, lineHeight:1.6, margin:0 }}>Pay a <strong style={{ color:"#c9a96e" }}>20% deposit</strong> now. Remaining balance paid on arrival.</p>
 
-                  {/* Ref */}
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"8px 16px", borderRadius:100, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, alignSelf:"flex-start" }}>
-                    <span style={{ fontSize:10, color:t.textFaint, letterSpacing:".1em", textTransform:"uppercase" }}>Ref</span>
-                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:14, color:"#c9a96e" }}>{savedBookingRef}</span>
+                  {/* Ref badge */}
+                  <div style={{ display:"flex", alignItems:"center", gap:7, padding:"6px 10px", borderRadius:100, background:"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}`, alignSelf:"flex-start", maxWidth:"100%", overflow:"hidden" }}>
+                    <span style={{ fontSize:9, color:t.textFaint, letterSpacing:".1em", textTransform:"uppercase", flexShrink:0 }}>Ref</span>
+                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:13, color:"#c9a96e", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{savedBookingRef}</span>
                   </div>
 
                   {/* Cost breakdown */}
-                  <div style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:16, padding:"18px 20px" }}>
-                    <div style={{ fontSize:11, fontWeight:600, letterSpacing:".09em", textTransform:"uppercase", color:t.textFaint, marginBottom:14 }}>Cost Breakdown</div>
+                  <div style={{ background:isDark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:12, padding:"14px" }}>
+                    <div style={{ fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:10 }}>Cost Breakdown</div>
                     {[
                       { label:"Room",      value:form.roomType },
                       { label:"Rate",      value:`MWK ${pricePerNight.toLocaleString()} / night` },
@@ -2216,84 +2225,77 @@ export default function GmalinaCourtWebsite() {
                       { label:"Check-Out", value:fmtDate(form.checkOut) },
                     ].map(({ label, value }) => (
                       <div key={label} className="bk-price-row">
-                        <span style={{ fontSize:13, color:t.textFaint }}>{label}</span>
-                        <span style={{ fontSize:13, fontWeight:500, color:t.text }}>{value}</span>
+                        <span style={{ fontSize:12, color:t.textFaint }}>{label}</span>
+                        <span style={{ fontSize:12, fontWeight:500, color:t.text }}>{value}</span>
                       </div>
                     ))}
                     <div className="bk-sep" />
-                    <div className="bk-price-row" style={{ paddingBottom:12 }}>
-                      <span style={{ fontSize:14, fontWeight:600, color:t.textMuted }}>Total Stay</span>
-                      <span style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:t.text }}>{fmtMWK(totalAmount)}</span>
+                    <div className="bk-price-row">
+                      <span style={{ fontSize:13, fontWeight:600, color:t.textMuted }}>Total Stay</span>
+                      <span style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:t.text }}>{fmtMWK(totalAmount)}</span>
                     </div>
                     {/* Deposit highlight */}
-                    <div style={{ background:"rgba(20,160,140,0.07)", border:"1px solid rgba(20,160,140,0.25)", borderRadius:12, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                    <div style={{ marginTop:8, background:"rgba(20,160,140,0.07)", border:"1px solid rgba(20,160,140,0.25)", borderRadius:10, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
                       <div>
-                        <div style={{ fontWeight:700, fontSize:14, color:"#14a08c" }}>Deposit Due Now (20%)</div>
-                        <div style={{ fontSize:11, color:t.textFaint, marginTop:2 }}>Paid via PayChangu · secure online</div>
+                        <div style={{ fontWeight:700, fontSize:13, color:"#14a08c" }}>Deposit Due Now (20%)</div>
+                        <div style={{ fontSize:10, color:t.textFaint, marginTop:2 }}>Paid · secure</div>
                       </div>
-                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:900, color:"#14a08c" }}>{fmtMWK(depositAmount)}</div>
+                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(16px,4vw,20px)", fontWeight:900, color:"#14a08c" }}>{fmtMWK(depositAmount)}</div>
                     </div>
-                    <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", fontSize:13, color:t.textFaint }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 0 0", fontSize:12, color:t.textFaint }}>
                       <span>Balance on Arrival</span>
                       <span style={{ fontWeight:600, color:t.textMuted }}>{fmtMWK(balanceAmount)}</span>
                     </div>
                   </div>
 
                   {/* Guest summary */}
-                  <div style={{ display:"flex", flexWrap:"wrap", gap:16, padding:"12px 16px", borderRadius:12, background:isDark?"rgba(201,169,110,0.04)":"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}` }}>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:12, padding:"10px 12px", borderRadius:10, background:isDark?"rgba(201,169,110,0.04)":"rgba(201,169,110,0.07)", border:`1px solid ${t.borderGold}` }}>
                     {[
                       { l:"Guest",  v:`${form.firstName} ${form.lastName}` },
                       { l:"Email",  v:form.email },
                       { l:"Guests", v:form.guests },
                       ...(form.occasion ? [{ l:"Occasion", v:form.occasion }] : []),
                     ].map(({ l, v }) => (
-                      <div key={l}>
-                        <div style={{ fontSize:10, color:t.textFaint, textTransform:"uppercase", letterSpacing:".09em", marginBottom:2 }}>{l}</div>
-                        <div style={{ fontSize:12, fontWeight:600, color:t.text }}>{v}</div>
+                      <div key={l} style={{ minWidth:0 }}>
+                        <div style={{ fontSize:9, color:t.textFaint, textTransform:"uppercase", letterSpacing:".08em", marginBottom:2 }}>{l}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"40vw" }}>{v}</div>
                       </div>
                     ))}
                   </div>
-
                   {bookingError && <div className="bk-error">⚠️ {bookingError}</div>}
                 </div>
               )}
 
-              {/* ── STEP 5: Confirmed ── */}
+              {/* ── STEP 5 ── */}
               {bookingStep === 5 && (
-                <div style={{ textAlign:"center", padding:"16px 0 24px" }}>
-                  <div style={{ fontSize:64, marginBottom:16, animation:"float 3s ease-in-out infinite" }}>✅</div>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:800, color:t.text, marginBottom:12 }}>
-                    Payment Confirmed!
-                  </div>
-                  <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:t.textMuted, lineHeight:1.7, maxWidth:420, margin:"0 auto 12px" }}>
+                <div style={{ textAlign:"center", padding:"12px 0 20px" }}>
+                  <div style={{ fontSize:"clamp(36px,10vw,56px)", marginBottom:10, animation:"float 3s ease-in-out infinite" }}>✅</div>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(18px,5vw,24px)", fontWeight:800, color:t.text, marginBottom:10 }}>Payment Confirmed!</div>
+                  <p style={{ fontSize:13, color:t.textMuted, lineHeight:1.6, maxWidth:340, margin:"0 auto 10px" }}>
                     Thank you, <strong style={{ color:t.text }}>{form.firstName}</strong>! Your <strong style={{ color:"#c9a96e" }}>20% deposit</strong> of <strong style={{ color:"#14a08c" }}>{fmtMWK(depositAmount)}</strong> has been received and your {form.roomType} is confirmed.
                   </p>
-                  <p style={{ fontSize:13, color:t.textFaint, marginBottom:24 }}>
-                    Receipt sent to <strong style={{ color:"#c9a96e" }}>{form.email}</strong>
-                  </p>
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:10, marginBottom:24, padding:"9px 18px", borderRadius:100, background:"rgba(20,160,140,0.08)", border:"1px solid rgba(20,160,140,0.3)" }}>
-                    <span style={{ fontSize:10, color:t.textFaint, textTransform:"uppercase", letterSpacing:".1em" }}>Booking Ref</span>
-                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:15, color:"#14a08c" }}>{savedBookingRef}</span>
+                  <p style={{ fontSize:12, color:t.textFaint, marginBottom:16 }}>Receipt sent to <strong style={{ color:"#c9a96e" }}>{form.email}</strong></p>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:8, marginBottom:16, padding:"7px 14px", borderRadius:100, background:"rgba(20,160,140,0.08)", border:"1px solid rgba(20,160,140,0.3)" }}>
+                    <span style={{ fontSize:9, color:t.textFaint, textTransform:"uppercase", letterSpacing:".1em" }}>Booking Ref</span>
+                    <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:13, color:"#14a08c" }}>{savedBookingRef}</span>
                   </div>
-                  <div style={{ background:isDark?"rgba(255,255,255,0.025)":"rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 20px", maxWidth:380, margin:"0 auto 20px", textAlign:"left" }}>
+                  <div style={{ background:isDark?"rgba(255,255,255,0.025)":"rgba(0,0,0,0.03)", border:`1px solid ${t.border}`, borderRadius:12, padding:"10px 14px", maxWidth:320, margin:"0 auto 14px", textAlign:"left" }}>
                     {[
-                      { l:"Room",          v:form.roomType },
-                      { l:"Check-In",      v:fmtDate(form.checkIn) },
-                      { l:"Check-Out",     v:fmtDate(form.checkOut) },
-                      { l:"Duration",      v:`${nights} night${nights!==1?"s":""}` },
-                      { l:"Total",         v:fmtMWK(totalAmount) },
-                      { l:"Deposit Paid",  v:fmtMWK(depositAmount), color:"#14a08c" },
-                      { l:"Balance Due",   v:fmtMWK(balanceAmount) },
+                      { l:"Room",         v:form.roomType },
+                      { l:"Check-In",     v:fmtDate(form.checkIn) },
+                      { l:"Check-Out",    v:fmtDate(form.checkOut) },
+                      { l:"Duration",     v:`${nights} night${nights!==1?"s":""}` },
+                      { l:"Total",        v:fmtMWK(totalAmount) },
+                      { l:"Deposit Paid", v:fmtMWK(depositAmount), color:"#14a08c" },
+                      { l:"Balance Due",  v:fmtMWK(balanceAmount) },
                     ].map(({ l, v, color }) => (
-                      <div key={l} style={{ display:"flex", justifyContent:"space-between", paddingBottom:8, marginBottom:8, borderBottom:`1px solid ${t.border}` }}>
-                        <span style={{ fontSize:12, color:t.textFaint }}>{l}</span>
-                        <span style={{ fontSize:13, fontWeight:700, color: color||t.text }}>{v}</span>
+                      <div key={l} style={{ display:"flex", justifyContent:"space-between", paddingBottom:6, marginBottom:6, borderBottom:`1px solid ${t.border}`, gap:8 }}>
+                        <span style={{ fontSize:11, color:t.textFaint, flexShrink:0 }}>{l}</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:color||t.text, textAlign:"right" }}>{v}</span>
                       </div>
                     ))}
                   </div>
-                  <p style={{ fontSize:12, color:t.textFaint }}>
-                    Questions? <a href="tel:+265998001909" style={{ color:"#c9a96e", textDecoration:"none", fontWeight:600 }}>+265 998 00 19 09</a>
-                  </p>
+                  <p style={{ fontSize:12, color:t.textFaint }}>Questions? <a href="tel:+265998001909" style={{ color:"#c9a96e", textDecoration:"none", fontWeight:600 }}>+265 998 00 19 09</a></p>
                 </div>
               )}
 
@@ -2301,51 +2303,17 @@ export default function GmalinaCourtWebsite() {
 
             {/* Footer */}
             <div className="bk-footer">
-              {bookingStep === 1 && (
-                <>
-                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={bookingNext}>Continue to Stay Details →</button>
-                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={closeBooking}>Cancel</button>
-                </>
-              )}
-              {bookingStep === 2 && (
-                <>
-                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={bookingNext}>Continue to Preferences →</button>
-                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(1); }}>← Back</button>
-                </>
-              )}
-              {bookingStep === 3 && (
-                <>
-                  <button className="btn-primary" style={{ flex:1, textAlign:"center", opacity:bookingLoading?0.7:1 }} onClick={saveAndPay} disabled={bookingLoading}>
-                    {bookingLoading ? <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:9 }}><span style={{ width:14,height:14,border:"2px solid rgba(0,0,0,.2)",borderTop:"2px solid #08090a",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite" }} />Saving…</span> : "Review & Pay →"}
-                  </button>
-                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button>
-                </>
-              )}
-              {bookingStep === 4 && (
-                <>
-                  <button className="btn-pay" onClick={openPayChangu}>
-                    🔒 Pay {fmtMWK(depositAmount)} Deposit via PayChangu
-                  </button>
-                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingError(""); setBookingStep(3); }}>← Back</button>
-                </>
-              )}
-              {bookingStep === 4 && (
-                <div style={{ width:"100%", textAlign:"center", marginTop:-8 }}>
-                  <button onClick={markPaymentDone} style={{ background:"none", border:"none", color:t.textFaint, fontSize:11, cursor:"pointer", textDecoration:"underline", fontFamily:"'DM Sans',sans-serif" }}>
-                    [Test: simulate successful payment]
-                  </button>
-                </div>
-              )}
-              {bookingStep === 5 && (
-                <>
-                  <button className="btn-primary" style={{ flex:1, textAlign:"center" }} onClick={closeBooking}>Close</button>
-                  <button className="btn-outline" style={{ flexShrink:0 }} onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button>
-                </>
-              )}
+              {bookingStep === 1 && (<><button className="btn-primary" onClick={bookingNext}>Continue to Stay Details →</button><button className="btn-outline" onClick={closeBooking}>Cancel</button></>)}
+              {bookingStep === 2 && (<><button className="btn-primary" onClick={bookingNext}>Continue to Preferences →</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(1); }}>← Back</button></>)}
+              {bookingStep === 3 && (<><button className="btn-primary" style={{ opacity:bookingLoading?.7:1 }} onClick={saveAndPay} disabled={bookingLoading}>{bookingLoading ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><span style={{ width:13,height:13,border:"2px solid rgba(0,0,0,.2)",borderTop:"2px solid #08090a",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite" }} />Saving…</span> : "Review & Pay →"}</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button></>)}
+              {bookingStep === 4 && (<><button className="btn-pay" onClick={openPayChangu}>🔒 Pay {fmtMWK(depositAmount)} Deposit</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(3); }}>← Back</button></>)}
+              {bookingStep === 4 && (<div style={{ width:"100%", textAlign:"center" }}><button onClick={markPaymentDone} style={{ background:"none",border:"none",color:t.textFaint,fontSize:11,cursor:"pointer",textDecoration:"underline",fontFamily:"'DM Sans',sans-serif" }}></button></div>)}
+              {bookingStep === 5 && (<><button className="btn-primary" onClick={closeBooking}>Close</button><button className="btn-outline" onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button></>)}
             </div>
           </div>
         </div>
       )}
+
       <footer style={{
         borderTop: `1px solid ${t.border}`,
         padding: "64px 32px 40px",
@@ -2378,7 +2346,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: t.textFaint, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
