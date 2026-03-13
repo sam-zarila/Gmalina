@@ -378,51 +378,54 @@ export default function GmalinaCourtWebsite() {
     }
   };
 
-  // Load PayChangu script once
   useEffect(() => {
-    if (document.querySelector('script[src="https://in.paychangu.com/js/popup.js"]')) return;
-    const s = document.createElement("script");
-    s.src = "https://in.paychangu.com/js/popup.js";
-    s.async = true;
-    document.head.appendChild(s);
+    const loadPayChangu = () => {
+      if (document.querySelector('script[src="https://in.paychangu.com/js/popup.js"]')) return;
+      const pc = document.createElement("script");
+      pc.src = "https://in.paychangu.com/js/popup.js";
+      pc.async = true;
+      document.head.appendChild(pc);
+    };
+
+    if (typeof (window as any).$ !== "undefined") {
+      loadPayChangu();
+    } else if (!document.querySelector('script[src*="jquery"]')) {
+      const jq = document.createElement("script");
+      jq.src = "https://code.jquery.com/jquery-3.7.1.min.js";
+      jq.integrity = "sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=";
+      jq.crossOrigin = "anonymous";
+      jq.onload = loadPayChangu;
+      document.head.appendChild(jq);
+    } else {
+      const existing = document.querySelector('script[src*="jquery"]') as HTMLScriptElement;
+      existing.addEventListener("load", loadPayChangu);
+    }
   }, []);
 
   const openPayChangu = () => {
-    const w = window as any;
-    if (typeof w.PaychanguCheckout !== "function") {
-      setBookingError("Payment system is loading, please try again in a moment.");
+    const pubKey = process.env.NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY || "";
+    if (!pubKey) {
+      setBookingError("PayChangu public key not set. Add NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY to .env.local");
       return;
     }
     setBookingError("");
-    w.PaychanguCheckout({
-      public_key: process.env.NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY || "pub-test-HYSBQpa5K91mmXMHrjhkmC6mAjObPJ2u",
-      tx_ref:     savedTxRef,
-      amount:     depositAmount,
-      currency:   "MWK",
-      callback_url: `${window.location.origin}/booking/payment-success?ref=${savedBookingRef}`,
-      return_url:   `${window.location.origin}/?booking=${savedBookingRef}&status=paid`,
-      customer: {
-        email:      form.email.trim(),
-        first_name: form.firstName.trim(),
-        last_name:  form.lastName.trim(),
-        phone:      form.phone.trim(),
-      },
-      customization: {
-        title:       "Gmalina Court Lodge — Booking Deposit",
-        description: `20% deposit · ${form.roomType} · ${nights} night${nights!==1?"s":""} · Ref: ${savedBookingRef}`,
-      },
-      meta: {
-        bookingRef: savedBookingRef,
-        firestoreId,
-        roomType:   form.roomType,
-        checkIn:    form.checkIn,
-        checkOut:   form.checkOut,
-        nights,
-        totalAmount,
-        depositAmount,
-        balanceAmount,
-      },
+    const p = new URLSearchParams({
+      ref:      savedBookingRef,
+      fid:      firestoreId,
+      room:     form.roomType,
+      checkin:  form.checkIn,
+      checkout: form.checkOut,
+      nights:   String(nights),
+      total:    String(totalAmount),
+      deposit:  String(depositAmount),
+      balance:  String(balanceAmount),
+      fname:    form.firstName.trim(),
+      lname:    form.lastName.trim(),
+      email:    form.email.trim(),
+      phone:    form.phone.trim(),
+      pk:       pubKey,
     });
+    window.open(`/pay.html?${p.toString()}`, "_blank");
   };
 
   const markPaymentDone = async () => {
@@ -874,7 +877,36 @@ export default function GmalinaCourtWebsite() {
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
         .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
-        /* ── BOOKING MODAL ── */
+        /* ── PAYCHANGU WRAPPER ── */
+        #wrapper {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 999999 !important;
+          display: none;
+          align-items: center !important;
+          justify-content: center !important;
+          background: rgba(0,0,0,0.82) !important;
+          backdrop-filter: blur(10px) !important;
+        }
+        #wrapper.show,
+        #wrapper[style*="display: block"],
+        #wrapper[style*="display:block"],
+        #wrapper[style*="display: flex"],
+        #wrapper[style*="display:flex"] {
+          display: flex !important;
+          z-index: 999999 !important;
+        }
+        #wrapper iframe,
+        #wrapper > div {
+          position: relative !important;
+          z-index: 1000000 !important;
+          max-width: 520px !important;
+          width: 95vw !important;
+          height: 90vh !important;
+          border-radius: 20px !important;
+          border: none !important;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.6) !important;
+        }
         .booking-backdrop {
           position: fixed; inset: 0; z-index: 10000;
           background: rgba(0,0,0,0.82); backdrop-filter: blur(16px);

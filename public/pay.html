@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Payment · Gmalina Court Lodge</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://in.paychangu.com/js/popup.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #08090a;
+      color: #f4f0ea;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #0f1012;
+      border: 1px solid rgba(201,169,110,0.25);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 460px;
+      width: 95vw;
+      text-align: center;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+    }
+    .logo { font-size: 36px; margin-bottom: 12px; }
+    h1 { font-size: 22px; font-weight: 700; color: #f4f0ea; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #8a7a6a; margin-bottom: 28px; }
+    .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+    .row:last-of-type { border-bottom: none; }
+    .label { color: #8a7a6a; }
+    .value { font-weight: 600; color: #f4f0ea; }
+    .deposit-box {
+      background: rgba(20,160,140,0.08);
+      border: 1px solid rgba(20,160,140,0.25);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin: 20px 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .deposit-label { font-size: 13px; color: #14a08c; font-weight: 600; }
+    .deposit-amount { font-size: 24px; font-weight: 800; color: #14a08c; }
+    .pay-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #14a08c, #1dc9ae);
+      color: #fff;
+      border: none;
+      padding: 16px;
+      border-radius: 100px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 8px 32px rgba(20,160,140,0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .pay-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(20,160,140,0.45); }
+    .pay-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .back-link { display: block; margin-top: 16px; font-size: 13px; color: #8a7a6a; text-decoration: none; cursor: pointer; }
+    .back-link:hover { color: #c9a96e; }
+    .ref-badge {
+      display: inline-block;
+      background: rgba(201,169,110,0.08);
+      border: 1px solid rgba(201,169,110,0.2);
+      border-radius: 100px;
+      padding: 4px 14px;
+      font-size: 11px;
+      color: #c9a96e;
+      font-family: monospace;
+      margin-bottom: 24px;
+    }
+    #wrapper { /* PayChangu iframe target */ }
+  </style>
+</head>
+<body>
+  <div id="wrapper"></div>
+
+  <div class="card" id="payment-card">
+    <div class="logo">🏛️</div>
+    <h1>Gmalina Court Lodge</h1>
+    <p class="sub">Secure Booking Deposit · Liwonde, Malawi</p>
+
+    <div class="ref-badge" id="ref-display">Loading…</div>
+
+    <div class="row"><span class="label">Room</span><span class="value" id="d-room">—</span></div>
+    <div class="row"><span class="label">Check-In</span><span class="value" id="d-checkin">—</span></div>
+    <div class="row"><span class="label">Check-Out</span><span class="value" id="d-checkout">—</span></div>
+    <div class="row"><span class="label">Duration</span><span class="value" id="d-nights">—</span></div>
+    <div class="row"><span class="label">Total Stay</span><span class="value" id="d-total">—</span></div>
+
+    <div class="deposit-box">
+      <div>
+        <div class="deposit-label">Deposit Due Now (20%)</div>
+        <div style="font-size:11px;color:#8a7a6a;margin-top:3px">Balance paid on arrival</div>
+      </div>
+      <div class="deposit-amount" id="d-deposit">—</div>
+    </div>
+
+    <button class="pay-btn" id="pay-btn" onclick="startPayment()">
+      🔒 Pay Deposit via PayChangu
+    </button>
+    <a class="back-link" onclick="window.history.back()">← Go back</a>
+  </div>
+
+  <script>
+    // Parse URL params passed from the booking form
+    const params = new URLSearchParams(window.location.search);
+    const bookingRef    = params.get("ref")      || "";
+    const firestoreId   = params.get("fid")      || "";
+    const roomType      = params.get("room")     || "Room";
+    const checkIn       = params.get("checkin")  || "";
+    const checkOut      = params.get("checkout") || "";
+    const nights        = parseInt(params.get("nights") || "1");
+    const totalAmount   = parseInt(params.get("total")  || "0");
+    const depositAmount = parseInt(params.get("deposit")|| "0");
+    const balanceAmount = parseInt(params.get("balance")|| "0");
+    const firstName     = params.get("fname")    || "";
+    const lastName      = params.get("lname")    || "";
+    const email         = params.get("email")    || "";
+    const phone         = params.get("phone")    || "";
+    const pubKey        = params.get("pk")       || "";
+
+    const fmtMWK  = n => "MWK " + parseInt(n).toLocaleString("en-MW");
+    const fmtDate = d => d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }) : "—";
+
+    // Populate the card
+    document.getElementById("ref-display").textContent = bookingRef || "No ref";
+    document.getElementById("d-room").textContent      = roomType;
+    document.getElementById("d-checkin").textContent   = fmtDate(checkIn);
+    document.getElementById("d-checkout").textContent  = fmtDate(checkOut);
+    document.getElementById("d-nights").textContent    = nights + " night" + (nights !== 1 ? "s" : "");
+    document.getElementById("d-total").textContent     = fmtMWK(totalAmount);
+    document.getElementById("d-deposit").textContent   = fmtMWK(depositAmount);
+
+    function startPayment() {
+      if (typeof PaychanguCheckout !== "function") {
+        alert("Payment system loading, please wait a moment and try again.");
+        return;
+      }
+      document.getElementById("pay-btn").disabled = true;
+      document.getElementById("pay-btn").textContent = "Opening payment…";
+
+      const txRef = bookingRef + "-" + Date.now();
+
+      PaychanguCheckout({
+        public_key:   pubKey,
+        tx_ref:       txRef,
+        amount:       depositAmount,
+        currency:     "MWK",
+        callback_url: window.location.origin + "/booking/payment-success?ref=" + bookingRef,
+        return_url:   window.location.origin + "/?booking=" + bookingRef + "&status=paid",
+        customer: {
+          email:      email,
+          first_name: firstName,
+          last_name:  lastName,
+          phone:      phone,
+        },
+        customization: {
+          title:       "Gmalina Court Lodge — Booking Deposit",
+          description: "20% deposit · " + roomType + " · " + nights + " night" + (nights!==1?"s":"") + " · Ref: " + bookingRef,
+        },
+        meta: {
+          bookingRef,
+          firestoreId,
+          roomType,
+          checkIn,
+          checkOut,
+          nights,
+          totalAmount,
+          depositAmount,
+          balanceAmount,
+        },
+      });
+
+      // Re-enable button after 5s in case popup was closed
+      setTimeout(() => {
+        document.getElementById("pay-btn").disabled = false;
+        document.getElementById("pay-btn").textContent = "🔒 Pay Deposit via PayChangu";
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
