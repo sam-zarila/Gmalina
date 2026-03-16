@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import {
-  getFirestore, collection, getDocs, doc, updateDoc,
-  Firestore, Timestamp
+  getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc,
+  serverTimestamp, Firestore, Timestamp
 } from "firebase/firestore";
 
 // Firebase is initialised lazily inside the component (avoids SSR crash)
@@ -40,7 +40,30 @@ interface Booking {
   paidAt?: Timestamp;
 }
 
-type Tab = "overview" | "bookings" | "booking-detail";
+type Tab = "overview" | "bookings" | "booking-detail" | "posts" | "testimonials";
+
+interface Post {
+  id: string;
+  title: string;
+  category: string;
+  excerpt: string;
+  img: string;
+  date: string;
+  readTime: string;
+  emoji: string;
+  published: boolean;
+  createdAt?: Timestamp;
+}
+
+interface Testimonial {
+  id: string;
+  quote: string;
+  author: string;
+  location: string;
+  rating: number;
+  published: boolean;
+  createdAt?: Timestamp;
+}
 type StatusFilter = "all" | "confirmed" | "awaiting_payment" | "cancelled";
 
 const fmtMWK  = (n: number) => "MWK " + (n || 0).toLocaleString("en-MW");
@@ -79,6 +102,24 @@ export default function AdminPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isDark, setIsDark]         = useState(true);
+
+  // ── Posts state ──
+  const [posts, setPosts]               = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError]     = useState("");
+  const [postForm, setPostForm]         = useState<Partial<Post>>({});
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [postSaving, setPostSaving]     = useState(false);
+
+  // ── Testimonials state ──
+  const [testimonials, setTestimonials]         = useState<Testimonial[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(false);
+  const [testimonialsError, setTestimonialsError]     = useState("");
+  const [testimonialForm, setTestimonialForm]   = useState<Partial<Testimonial>>({});
+  const [testimonialModalOpen, setTestimonialModalOpen] = useState(false);
+  const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
+  const [testimonialSaving, setTestimonialSaving] = useState(false);
 
   // ── Persist auth across page refresh ──
   useEffect(() => {
@@ -140,8 +181,93 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (authed) loadBookings();
+    if (authed) { loadBookings(); loadPosts(); loadTestimonials(); }
   }, [authed]);
+
+  const loadPosts = async () => {
+    setPostsLoading(true); setPostsError("");
+    try {
+      const snap = await getDocs(collection(getDB(), "posts"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Post));
+      data.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+      setPosts(data);
+    } catch (e: any) { setPostsError(e?.message || "Failed to load posts"); }
+    finally { setPostsLoading(false); }
+  };
+
+  const savePost = async () => {
+    if (!postForm.title?.trim() || !postForm.excerpt?.trim()) return;
+    setPostSaving(true);
+    try {
+      const db = getDB();
+      const payload = {
+        title:     postForm.title.trim(),
+        category:  postForm.category || "Uncategorised",
+        excerpt:   postForm.excerpt.trim(),
+        img:       postForm.img?.trim() || "",
+        date:      postForm.date || new Date().toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }),
+        readTime:  postForm.readTime || "3 min read",
+        emoji:     postForm.emoji || "📝",
+        published: postForm.published ?? true,
+      };
+      if (editingPostId) {
+        await updateDoc(doc(db, "posts", editingPostId), payload);
+        setPosts(prev => prev.map(p => p.id === editingPostId ? { ...p, ...payload } : p));
+      } else {
+        const ref = await addDoc(collection(db, "posts"), { ...payload, createdAt: serverTimestamp() });
+        setPosts(prev => [{ id: ref.id, ...payload } as Post, ...prev]);
+      }
+      setPostModalOpen(false); setPostForm({}); setEditingPostId(null);
+    } catch (e: any) { setPostsError(e?.message || "Save failed"); }
+    finally { setPostSaving(false); }
+  };
+
+  const deletePost = async (id: string) => {
+    if (!confirm("Delete this post? This cannot be undone.")) return;
+    try { await deleteDoc(doc(getDB(), "posts", id)); setPosts(prev => prev.filter(p => p.id !== id)); }
+    catch (e: any) { setPostsError(e?.message || "Delete failed"); }
+  };
+
+  const loadTestimonials = async () => {
+    setTestimonialsLoading(true); setTestimonialsError("");
+    try {
+      const snap = await getDocs(collection(getDB(), "testimonials"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Testimonial));
+      data.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+      setTestimonials(data);
+    } catch (e: any) { setTestimonialsError(e?.message || "Failed to load testimonials"); }
+    finally { setTestimonialsLoading(false); }
+  };
+
+  const saveTestimonial = async () => {
+    if (!testimonialForm.quote?.trim() || !testimonialForm.author?.trim()) return;
+    setTestimonialSaving(true);
+    try {
+      const db = getDB();
+      const payload = {
+        quote:     testimonialForm.quote.trim(),
+        author:    testimonialForm.author.trim(),
+        location:  testimonialForm.location?.trim() || "",
+        rating:    testimonialForm.rating ?? 5,
+        published: testimonialForm.published ?? true,
+      };
+      if (editingTestimonialId) {
+        await updateDoc(doc(db, "testimonials", editingTestimonialId), payload);
+        setTestimonials(prev => prev.map(t => t.id === editingTestimonialId ? { ...t, ...payload } : t));
+      } else {
+        const ref = await addDoc(collection(db, "testimonials"), { ...payload, createdAt: serverTimestamp() });
+        setTestimonials(prev => [{ id: ref.id, ...payload } as Testimonial, ...prev]);
+      }
+      setTestimonialModalOpen(false); setTestimonialForm({}); setEditingTestimonialId(null);
+    } catch (e: any) { setTestimonialsError(e?.message || "Save failed"); }
+    finally { setTestimonialSaving(false); }
+  };
+
+  const deleteTestimonial = async (id: string) => {
+    if (!confirm("Delete this testimonial?")) return;
+    try { await deleteDoc(doc(getDB(), "testimonials", id)); setTestimonials(prev => prev.filter(t => t.id !== id)); }
+    catch (e: any) { setTestimonialsError(e?.message || "Delete failed"); }
+  };
 
   const updateStatus = async (bookingId: string, newStatus: string, newPaymentStatus: string) => {
     setUpdatingId(bookingId);
@@ -343,7 +469,7 @@ export default function AdminPage() {
 
         {/* ── TABS ── */}
         <div style={{ display: "flex", gap: 4, padding: "16px 0 0", borderBottom: `1px solid ${t.border}`, marginBottom: 28 }}>
-          {([["overview","📊 Overview"],["bookings","📋 Bookings"]] as [Tab, string][]).map(([id, label]) => (
+          {([["overview","📊 Overview"],["bookings","📋 Bookings"],["posts","✍️ Posts"],["testimonials","💬 Testimonials"]] as [Tab, string][]).map(([id, label]) => (
             <button key={id} className={`tab-btn ${tab === id ? "active" : ""}`} onClick={() => { setTab(id); setSelectedBooking(null); }}>{label}</button>
           ))}
         </div>
@@ -662,6 +788,209 @@ export default function AdminPage() {
         })()}
 
       </div>
+
+
+        {/* ════════ POSTS TAB ════════ */}
+        {tab === "posts" && (
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text }}>Stories & Insights</div>
+              <button onClick={() => { setPostForm({ published:true, emoji:"📝", category:"Travel Guide" }); setEditingPostId(null); setPostModalOpen(true); }}
+                style={{ background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", border:"none", borderRadius:100, padding:"9px 20px", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#08090a", cursor:"pointer" }}>
+                + New Post
+              </button>
+            </div>
+
+            {postsError && <div style={{ background:"rgba(220,60,60,0.08)", border:"1px solid rgba(220,60,60,0.25)", borderRadius:10, padding:"10px 14px", color:"#e05555", fontSize:13, marginBottom:16 }}>⚠️ {postsError}</div>}
+
+            {postsLoading ? (
+              <div style={{ padding:40, textAlign:"center", color:t.textFaint }}>Loading posts…</div>
+            ) : posts.length === 0 ? (
+              <div style={{ padding:48, textAlign:"center", color:t.textFaint }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>✍️</div>
+                <div style={{ fontSize:15, marginBottom:8 }}>No posts yet</div>
+                <div style={{ fontSize:13 }}>Click "+ New Post" to publish your first story.</div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {posts.map(post => (
+                  <div key={post.id} style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 20px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                    <div style={{ width:44, height:44, borderRadius:10, overflow:"hidden", flexShrink:0, background:t.bgAlt }}>
+                      {post.img ? <img src={post.img} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{post.emoji}</div>}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:14, fontWeight:600, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.title}</div>
+                      <div style={{ fontSize:12, color:t.textFaint, marginTop:2 }}>{post.category} · {post.date} · {post.readTime}</div>
+                    </div>
+                    <span style={{ padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:600, background:post.published?"rgba(20,160,140,0.1)":"rgba(255,255,255,0.06)", border:`1px solid ${post.published?"rgba(20,160,140,0.3)":t.border}`, color:post.published?"#14a08c":t.textFaint, flexShrink:0 }}>
+                      {post.published ? "Published" : "Draft"}
+                    </span>
+                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                      <button onClick={() => { setPostForm(post); setEditingPostId(post.id); setPostModalOpen(true); }}
+                        style={{ background:"rgba(201,169,110,0.1)", border:"1px solid rgba(201,169,110,0.3)", borderRadius:8, padding:"6px 12px", color:"#c9a96e", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif", fontWeight:600 }}>Edit</button>
+                      <button onClick={() => deletePost(post.id)}
+                        style={{ background:"rgba(220,60,60,0.08)", border:"1px solid rgba(220,60,60,0.25)", borderRadius:8, padding:"6px 12px", color:"#e05555", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif", fontWeight:600 }}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Post Modal */}
+            {postModalOpen && (
+              <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.75)", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={() => setPostModalOpen(false)}>
+                <div style={{ background:t.bgAlt, border:`1px solid ${t.borderGold}`, borderRadius:20, padding:"28px 28px 24px", width:"100%", maxWidth:560, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:t.text, marginBottom:20 }}>{editingPostId ? "Edit Post" : "New Post"}</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                    <div>
+                      <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Title *</label>
+                      <input className="adm-input" value={postForm.title||""} onChange={e => setPostForm(f => ({...f, title:e.target.value}))} placeholder="Post title…" />
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Category</label>
+                        <select className="adm-input" value={postForm.category||""} onChange={e => setPostForm(f => ({...f, category:e.target.value}))} style={{ appearance:"none" }}>
+                          {["Travel Guide","Cuisine","Events","Lifestyle","Wellness","Culture","Uncategorised"].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Emoji</label>
+                        <input className="adm-input" value={postForm.emoji||""} onChange={e => setPostForm(f => ({...f, emoji:e.target.value}))} placeholder="🦁" />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Excerpt *</label>
+                      <textarea className="adm-input" rows={3} value={postForm.excerpt||""} onChange={e => setPostForm(f => ({...f, excerpt:e.target.value}))} placeholder="Brief summary of the post…" style={{ resize:"vertical" }} />
+                    </div>
+                    <div>
+                      <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Image URL</label>
+                      <input className="adm-input" value={postForm.img||""} onChange={e => setPostForm(f => ({...f, img:e.target.value}))} placeholder="https://images.unsplash.com/…" />
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Date</label>
+                        <input className="adm-input" value={postForm.date||""} onChange={e => setPostForm(f => ({...f, date:e.target.value}))} placeholder="Jan 15, 2025" />
+                      </div>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Read Time</label>
+                        <input className="adm-input" value={postForm.readTime||""} onChange={e => setPostForm(f => ({...f, readTime:e.target.value}))} placeholder="5 min read" />
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:10, border:`1px solid ${t.border}`, cursor:"pointer", userSelect:"none" }} onClick={() => setPostForm(f => ({...f, published:!f.published}))}>
+                      <div style={{ width:34, height:18, borderRadius:9, background:postForm.published?"rgba(20,160,140,0.3)":"rgba(255,255,255,0.08)", border:`1px solid ${postForm.published?"rgba(20,160,140,0.4)":t.border}`, position:"relative", transition:"all .25s", flexShrink:0 }}>
+                        <div style={{ position:"absolute", width:11, height:11, borderRadius:"50%", background:postForm.published?"#14a08c":"rgba(244,240,234,0.3)", top:3, left:3, transform:postForm.published?"translateX(15px)":"translateX(0)", transition:"transform .25s, background .25s" }} />
+                      </div>
+                      <span style={{ fontSize:13, color:t.textMuted, fontFamily:"'DM Sans',sans-serif" }}>{postForm.published ? "Published (visible on site)" : "Draft (hidden from site)"}</span>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:10, marginTop:20 }}>
+                    <button onClick={savePost} disabled={postSaving || !postForm.title?.trim() || !postForm.excerpt?.trim()}
+                      style={{ flex:1, background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", border:"none", borderRadius:100, padding:"12px", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#08090a", cursor:"pointer", opacity:(postSaving||!postForm.title?.trim()||!postForm.excerpt?.trim())?.6:1 }}>
+                      {postSaving ? "Saving…" : editingPostId ? "Save Changes" : "Publish Post"}
+                    </button>
+                    <button onClick={() => { setPostModalOpen(false); setPostForm({}); setEditingPostId(null); }}
+                      style={{ padding:"12px 20px", background:"transparent", border:`1px solid ${t.border}`, borderRadius:100, color:t.textMuted, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14 }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════════ TESTIMONIALS TAB ════════ */}
+        {tab === "testimonials" && (
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:t.text }}>Guest Testimonials</div>
+              <button onClick={() => { setTestimonialForm({ published:true, rating:5 }); setEditingTestimonialId(null); setTestimonialModalOpen(true); }}
+                style={{ background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", border:"none", borderRadius:100, padding:"9px 20px", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#08090a", cursor:"pointer" }}>
+                + New Testimonial
+              </button>
+            </div>
+
+            {testimonialsError && <div style={{ background:"rgba(220,60,60,0.08)", border:"1px solid rgba(220,60,60,0.25)", borderRadius:10, padding:"10px 14px", color:"#e05555", fontSize:13, marginBottom:16 }}>⚠️ {testimonialsError}</div>}
+
+            {testimonialsLoading ? (
+              <div style={{ padding:40, textAlign:"center", color:t.textFaint }}>Loading testimonials…</div>
+            ) : testimonials.length === 0 ? (
+              <div style={{ padding:48, textAlign:"center", color:t.textFaint }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>💬</div>
+                <div style={{ fontSize:15, marginBottom:8 }}>No testimonials yet</div>
+                <div style={{ fontSize:13 }}>Click "+ New Testimonial" to add your first guest review.</div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {testimonials.map(t2 => (
+                  <div key={t2.id} style={{ background:t.bgCard, border:`1px solid ${t.border}`, borderRadius:14, padding:"16px 20px", display:"flex", alignItems:"flex-start", gap:14, flexWrap:"wrap" }}>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,rgba(201,169,110,0.2),rgba(201,169,110,0.05))", border:`1px solid ${t.borderGold}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, flexShrink:0, color:"#c9a96e" }}>{t2.author[0]}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, color:t.text, lineHeight:1.6, fontStyle:"italic", marginBottom:6 }}>"{t2.quote}"</div>
+                      <div style={{ fontSize:12, color:t.textFaint }}>{t2.author} · {t2.location} · {"★".repeat(t2.rating)}</div>
+                    </div>
+                    <span style={{ padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:600, background:t2.published?"rgba(20,160,140,0.1)":"rgba(255,255,255,0.06)", border:`1px solid ${t2.published?"rgba(20,160,140,0.3)":t.border}`, color:t2.published?"#14a08c":t.textFaint, flexShrink:0 }}>
+                      {t2.published ? "Published" : "Hidden"}
+                    </span>
+                    <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                      <button onClick={() => { setTestimonialForm(t2); setEditingTestimonialId(t2.id); setTestimonialModalOpen(true); }}
+                        style={{ background:"rgba(201,169,110,0.1)", border:"1px solid rgba(201,169,110,0.3)", borderRadius:8, padding:"6px 12px", color:"#c9a96e", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif", fontWeight:600 }}>Edit</button>
+                      <button onClick={() => deleteTestimonial(t2.id)}
+                        style={{ background:"rgba(220,60,60,0.08)", border:"1px solid rgba(220,60,60,0.25)", borderRadius:8, padding:"6px 12px", color:"#e05555", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif", fontWeight:600 }}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Testimonial Modal */}
+            {testimonialModalOpen && (
+              <div style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.75)", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={() => setTestimonialModalOpen(false)}>
+                <div style={{ background:t.bgAlt, border:`1px solid ${t.borderGold}`, borderRadius:20, padding:"28px 28px 24px", width:"100%", maxWidth:480 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:t.text, marginBottom:20 }}>{editingTestimonialId ? "Edit Testimonial" : "New Testimonial"}</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                    <div>
+                      <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Quote *</label>
+                      <textarea className="adm-input" rows={3} value={testimonialForm.quote||""} onChange={e => setTestimonialForm(f => ({...f, quote:e.target.value}))} placeholder="Guest's review…" style={{ resize:"vertical" }} />
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Author *</label>
+                        <input className="adm-input" value={testimonialForm.author||""} onChange={e => setTestimonialForm(f => ({...f, author:e.target.value}))} placeholder="Jane D." />
+                      </div>
+                      <div>
+                        <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:5 }}>Location</label>
+                        <input className="adm-input" value={testimonialForm.location||""} onChange={e => setTestimonialForm(f => ({...f, location:e.target.value}))} placeholder="Nairobi, Kenya" />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display:"block", fontSize:10, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", color:t.textFaint, marginBottom:8 }}>Rating</label>
+                      <div style={{ display:"flex", gap:8 }}>
+                        {[1,2,3,4,5].map(n => (
+                          <button key={n} onClick={() => setTestimonialForm(f => ({...f, rating:n}))}
+                            style={{ width:36, height:36, borderRadius:8, border:`1.5px solid ${(testimonialForm.rating??5)>=n?"#c9a96e":t.border}`, background:(testimonialForm.rating??5)>=n?"rgba(201,169,110,0.15)":"transparent", fontSize:18, cursor:"pointer", transition:"all .2s" }}>⭐</button>
+                        ))}
+                        <span style={{ alignSelf:"center", fontSize:14, color:t.textFaint, marginLeft:4 }}>{testimonialForm.rating ?? 5}/5</span>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:10, border:`1px solid ${t.border}`, cursor:"pointer", userSelect:"none" }} onClick={() => setTestimonialForm(f => ({...f, published:!f.published}))}>
+                      <div style={{ width:34, height:18, borderRadius:9, background:testimonialForm.published?"rgba(20,160,140,0.3)":"rgba(255,255,255,0.08)", border:`1px solid ${testimonialForm.published?"rgba(20,160,140,0.4)":t.border}`, position:"relative", transition:"all .25s", flexShrink:0 }}>
+                        <div style={{ position:"absolute", width:11, height:11, borderRadius:"50%", background:testimonialForm.published?"#14a08c":"rgba(244,240,234,0.3)", top:3, left:3, transform:testimonialForm.published?"translateX(15px)":"translateX(0)", transition:"transform .25s, background .25s" }} />
+                      </div>
+                      <span style={{ fontSize:13, color:t.textMuted, fontFamily:"'DM Sans',sans-serif" }}>{testimonialForm.published ? "Published (visible on site)" : "Hidden from site"}</span>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:10, marginTop:20 }}>
+                    <button onClick={saveTestimonial} disabled={testimonialSaving || !testimonialForm.quote?.trim() || !testimonialForm.author?.trim()}
+                      style={{ flex:1, background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", border:"none", borderRadius:100, padding:"12px", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#08090a", cursor:"pointer", opacity:(testimonialSaving||!testimonialForm.quote?.trim()||!testimonialForm.author?.trim())?.6:1 }}>
+                      {testimonialSaving ? "Saving…" : editingTestimonialId ? "Save Changes" : "Add Testimonial"}
+                    </button>
+                    <button onClick={() => { setTestimonialModalOpen(false); setTestimonialForm({}); setEditingTestimonialId(null); }}
+                      style={{ padding:"12px 20px", background:"transparent", border:`1px solid ${t.border}`, borderRadius:100, color:t.textMuted, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14 }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "32px 24px", marginTop: 48, borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.textFaint }}>

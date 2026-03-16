@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getFirestore, collection, addDoc, serverTimestamp, updateDoc, doc, Firestore } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp, updateDoc, doc, Firestore } from "firebase/firestore";
 
 // ─── Firebase initialisation (reads from .env.local) ─────────────────────────
 const firebaseConfig = {
@@ -228,6 +228,9 @@ export default function GmalinaCourtWebsite() {
   const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeBlogTag, setActiveBlogTag] = useState("All");
+  const [livePosts, setLivePosts]           = useState<typeof BLOGS>([]);
+  const [liveTestimonials, setLiveTestimonials] = useState<typeof TESTIMONIALS>([]);
+  const [contentLoaded, setContentLoaded]   = useState(false);
 
   // ── Booking modal state ──
   const [bookingOpen, setBookingOpen]       = useState(false);
@@ -488,6 +491,33 @@ export default function GmalinaCourtWebsite() {
     });
   };
 
+  // Load published posts and testimonials from Firestore
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const [postSnap, testimonialSnap] = await Promise.all([
+          getDocs(collection(db, "posts")),
+          getDocs(collection(db, "testimonials")),
+        ]);
+        const posts = postSnap.docs
+          .map(d => ({ ...d.data() } as typeof BLOGS[0]))
+          .filter((p: any) => p.published !== false)
+          .sort((a: any, b: any) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+        const tms = testimonialSnap.docs
+          .map(d => ({ ...d.data() } as typeof TESTIMONIALS[0]))
+          .filter((t: any) => t.published !== false)
+          .sort((a: any, b: any) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+        if (posts.length > 0) setLivePosts(posts);
+        if (tms.length > 0) setLiveTestimonials(tms);
+      } catch (e) {
+        // Silently fall back to hardcoded data if Firestore unavailable
+      } finally {
+        setContentLoaded(true);
+      }
+    };
+    loadContent();
+  }, []);
+
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 40);
@@ -504,8 +534,11 @@ export default function GmalinaCourtWebsite() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  const BLOG_DATA = livePosts.length > 0 ? livePosts : BLOGS;
+  const TESTIMONIAL_DATA = liveTestimonials.length > 0 ? liveTestimonials : TESTIMONIALS;
+
   useEffect(() => {
-    const t = setInterval(() => setActiveTestimonial(p => (p + 1) % TESTIMONIALS.length), 4000);
+    const t = setInterval(() => setActiveTestimonial(p => (p + 1) % TESTIMONIAL_DATA.length), 4000);
     return () => clearInterval(t);
   }, []);
 
@@ -1719,23 +1752,23 @@ export default function GmalinaCourtWebsite() {
                 fontStyle: "italic", color: t.text,
                 marginBottom: 32, transition: "all 0.5s"
               }}>
-                {TESTIMONIALS[activeTestimonial].quote}
+                {TESTIMONIAL_DATA[activeTestimonial].quote}
               </p>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #c9a96e, #e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                  {TESTIMONIALS[activeTestimonial].author[0]}
+                  {TESTIMONIAL_DATA[activeTestimonial].author[0]}
                 </div>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 15, color: t.text }}>{TESTIMONIALS[activeTestimonial].author}</div>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint }}>{TESTIMONIALS[activeTestimonial].location}</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 15, color: t.text }}>{TESTIMONIAL_DATA[activeTestimonial].author}</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: t.textFaint }}>{TESTIMONIAL_DATA[activeTestimonial].location}</div>
                 </div>
-                <div style={{ marginLeft: 16, color: "#c9a96e", fontSize: 16 }}>{"★".repeat(TESTIMONIALS[activeTestimonial].rating)}</div>
+                <div style={{ marginLeft: 16, color: "#c9a96e", fontSize: 16 }}>{"★".repeat(TESTIMONIAL_DATA[activeTestimonial].rating)}</div>
               </div>
             </div>
 
             {/* Dots */}
             <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
-              {TESTIMONIALS.map((_, i) => (
+              {TESTIMONIAL_DATA.map((_, i) => (
                 <button key={i} className={`testimonial-dot ${i === activeTestimonial ? "active" : ""}`}
                   onClick={() => setActiveTestimonial(i)} />
               ))}
@@ -1868,7 +1901,7 @@ export default function GmalinaCourtWebsite() {
           </AnimSection>
 
           {/* Featured post */}
-          {(activeBlogTag === "All" || BLOGS[0].category === activeBlogTag) && (
+          {(BLOG_DATA.length > 0 && (activeBlogTag === "All" || BLOG_DATA[0].category === activeBlogTag)) && (
             <AnimSection>
               <div style={{
                 background: t.bgCard,
@@ -1882,7 +1915,7 @@ export default function GmalinaCourtWebsite() {
                 boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.25)" : "0 8px 32px rgba(0,0,0,0.08)"
               }} className="blog-featured">
                 <div className="blog-featured-img" style={{ overflow: "hidden", position: "relative", minHeight: 320 }}>
-                  <img src={BLOGS[0].img} alt={BLOGS[0].title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                  <img src={BLOG_DATA[0].img} alt={BLOG_DATA[0].title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))" }} />
                   <div style={{
                     position: "absolute", top: 16, left: 16,
@@ -1898,14 +1931,14 @@ export default function GmalinaCourtWebsite() {
                       letterSpacing: "0.1em", textTransform: "uppercase", color: "#14a08c",
                       background: "rgba(20,160,140,0.1)", border: "1px solid rgba(20,160,140,0.2)",
                       padding: "4px 12px", borderRadius: 100
-                    }}>{BLOGS[0].category}</span>
+                    }}>{BLOG_DATA[0].category}</span>
                   </div>
-                  <h3 style={{ fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em", color: t.text }}>{BLOGS[0].title}</h3>
-                  <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 15, fontWeight: 300, marginBottom: 28 }}>{BLOGS[0].excerpt}</p>
+                  <h3 style={{ fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 800, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em", color: t.text }}>{BLOG_DATA[0].title}</h3>
+                  <p style={{ color: t.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.75, fontSize: 15, fontWeight: 300, marginBottom: 28 }}>{BLOG_DATA[0].excerpt}</p>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", gap: 20 }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>📅 {BLOGS[0].date}</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>⏱ {BLOGS[0].readTime}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>📅 {BLOG_DATA[0].date}</span>
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: t.textFaint }}>⏱ {BLOG_DATA[0].readTime}</span>
                     </div>
                     <span className="blog-read-more">Read Article →</span>
                   </div>
@@ -1916,7 +1949,7 @@ export default function GmalinaCourtWebsite() {
 
           {/* Grid of remaining posts */}
           <div className="grid-3">
-            {BLOGS.filter((b, i) => (i > 0 || activeBlogTag !== "All") && (activeBlogTag === "All" || b.category === activeBlogTag)).map((post, i) => (
+            {BLOG_DATA.filter((b, i) => (i > 0 || activeBlogTag !== "All") && (activeBlogTag === "All" || b.category === activeBlogTag)).map((post, i) => (
               <AnimSection key={post.title} delay={i * 0.08}>
                 <div className="blog-card">
                   <div style={{ height: 200, overflow: "hidden", position: "relative" }}>
