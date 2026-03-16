@@ -410,6 +410,8 @@ export default function GmalinaCourtWebsite() {
       return;
     }
     setBookingError("");
+    // Clear any stale result
+    try { localStorage.removeItem("paychangu_result"); } catch {}
     const p = new URLSearchParams({
       ref:      savedBookingRef,
       fid:      firestoreId,
@@ -426,13 +428,16 @@ export default function GmalinaCourtWebsite() {
       phone:    form.phone.trim(),
       pk:       pubKey,
     });
-    setPayUrl(`/pay.html?${p.toString()}`);
+    // Open pay.html in a new tab — avoids cross-origin iframe navigation block
+    window.open(`/pay.html?${p.toString()}`, "_blank", "noopener");
+    setPayUrl("waiting"); // show waiting UI in modal
   };
 
-  const markPaymentDone = async () => {
-    if (firestoreId) {
+  const markPaymentDone = async (fid?: string) => {
+    const id = fid || firestoreId;
+    if (id) {
       try {
-        await updateDoc(doc(db, "bookings", firestoreId), {
+        await updateDoc(doc(db, "bookings", id), {
           status: "confirmed", paymentStatus: "deposit_paid", paidAt: serverTimestamp(),
         });
       } catch (e) { console.error(e); }
@@ -440,16 +445,34 @@ export default function GmalinaCourtWebsite() {
     setBookingStep(5);
   };
 
-  // Listen for payment success message from pay.html iframe
+  // Listen for payment success via BroadcastChannel (same-origin new tab)
   useEffect(() => {
-    const handler = async (e: MessageEvent) => {
-      if (e.data?.type === "PAYCHANGU_SUCCESS") {
-        setPayUrl(""); // close iframe overlay
-        await markPaymentDone();
-      }
+    const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("paychangu_result") : null;
+    if (bc) {
+      bc.onmessage = async (e) => {
+        if (e.data?.type === "PAYCHANGU_SUCCESS") {
+          setPayUrl("");
+          await markPaymentDone(e.data.firestoreId || undefined);
+        }
+      };
+    }
+    // Fallback: poll localStorage for payment result
+    const poll = setInterval(() => {
+      try {
+        const raw = localStorage.getItem("paychangu_result");
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data?.type === "PAYCHANGU_SUCCESS") {
+          localStorage.removeItem("paychangu_result");
+          setPayUrl("");
+          markPaymentDone(data.firestoreId || undefined);
+        }
+      } catch {}
+    }, 800);
+    return () => {
+      bc?.close();
+      clearInterval(poll);
     };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
   }, [firestoreId]); // eslint-disable-line
 
   useEffect(() => {
@@ -1024,16 +1047,20 @@ export default function GmalinaCourtWebsite() {
         .bk-body::-webkit-scrollbar-thumb { background:rgba(201,169,110,0.25); border-radius:2px; }
 
         .bk-footer {
-          flex-shrink:0; padding:10px 14px 16px;
+          flex-shrink:0; padding:12px 16px 16px;
           border-top:1px solid ${t.border};
           display:flex; flex-direction:column; gap:8px;
         }
-        @media (min-width:600px) { .bk-footer { padding:12px 24px 18px; flex-direction:row; gap:10px; } }
-        .bk-footer > * { width:100% !important; justify-content:center; }
         @media (min-width:600px) {
-          .bk-footer > .btn-primary { flex:1; width:auto !important; }
-          .bk-footer > .btn-outline  { flex:0 0 auto; width:auto !important; }
-          .bk-footer > .btn-pay     { flex:1; width:auto !important; }
+          .bk-footer { padding:14px 24px 20px; flex-direction:row; align-items:center; gap:10px; }
+        }
+        /* mobile: everything full width */
+        .bk-footer .bk-btn-main  { width:100%; justify-content:center; }
+        .bk-footer .bk-btn-back  { width:100%; justify-content:center; }
+        /* desktop: back is compact, main grows */
+        @media (min-width:600px) {
+          .bk-footer .bk-btn-main { flex:1; width:auto; }
+          .bk-footer .bk-btn-back { flex:0 0 auto; width:auto; }
         }
 
         .booking-close {
@@ -1081,9 +1108,43 @@ export default function GmalinaCourtWebsite() {
         .bk-price-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid ${isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)"}; gap:8px; }
         .bk-price-row:last-child { border-bottom:none; }
         .bk-price-row > span:last-child { text-align:right; }
-        .btn-pay { background:linear-gradient(135deg,#14a08c,#1dc9ae); color:#fff; border:none; padding:13px 18px; border-radius:100px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all .3s; display:flex; align-items:center; gap:7px; width:100%; justify-content:center; box-shadow:0 6px 24px rgba(20,160,140,0.3); }
-        .btn-pay:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(20,160,140,0.4); }
-        .btn-pay:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+        .btn-pay {
+          background: linear-gradient(135deg, #0e7b6a 0%, #14a08c 50%, #1dc9ae 100%);
+          color: #fff; border: none;
+          padding: 14px 24px;
+          border-radius: 14px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 15px; font-weight: 700;
+          cursor: pointer; transition: all .25s;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          box-shadow: 0 4px 20px rgba(20,160,140,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+          letter-spacing: 0.01em;
+          position: relative; overflow: hidden;
+        }
+        .btn-pay::after {
+          content:''; position:absolute; inset:0;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 60%);
+          pointer-events:none;
+        }
+        .btn-pay:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(20,160,140,0.45), inset 0 1px 0 rgba(255,255,255,0.2); }
+        .btn-pay:active { transform:translateY(0); }
+        .btn-pay:disabled { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+        .btn-pay-lock { font-size:15px; }
+
+        /* Compact "← Back" style for inside modal footer */
+        .btn-back {
+          background: transparent;
+          color: ${t.textMuted};
+          border: 1.5px solid ${t.border};
+          padding: 13px 20px;
+          border-radius: 14px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 500;
+          cursor: pointer; transition: all .2s;
+          display: flex; align-items: center; gap: 6px;
+          white-space: nowrap;
+        }
+        .btn-back:hover { border-color: rgba(201,169,110,0.5); color: #c9a96e; }
 
         .mobile-theme-toggle { display: none !important; }
         .mobile-book-btn-nav { display: none !important; }
@@ -1181,7 +1242,7 @@ export default function GmalinaCourtWebsite() {
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
             <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
           </button>
-          <button className="btn-primary" style={{ padding: "10px 24px", fontSize: 13 }} onClick={openBooking}>Book Now</button>
+          <a href="/admin" className="btn-outline" style={{ padding: "9px 22px", fontSize: 13, display:"inline-flex", alignItems:"center", gap:7, borderRadius:50 }}><span style={{fontSize:12}}>🔐</span> Admin</a>
         </div>
 
         {/* Mobile right side */}
@@ -1189,7 +1250,7 @@ export default function GmalinaCourtWebsite() {
           <button className="theme-toggle mobile-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
             <div className="theme-toggle-thumb">{isDark ? "🌙" : "☀️"}</div>
           </button>
-          <button className="btn-primary mobile-book-btn-nav" style={{ padding: "9px 18px", fontSize: 12 }} onClick={openBooking}>Book Now</button>
+          <a href="/admin" className="btn-outline mobile-book-btn-nav" style={{ padding: "8px 16px", fontSize: 12, display:"inline-flex", alignItems:"center", gap:5, borderRadius:50 }}><span>🔐</span> Admin</a>
           <button
             className={`hamburger ${menuOpen ? "open" : ""}`}
             onClick={() => setMenuOpen(o => !o)}
@@ -1205,6 +1266,7 @@ export default function GmalinaCourtWebsite() {
         {NAV_LINKS.map(link => (
           <a key={link} href={`#${link.toLowerCase()}`} onClick={() => setMenuOpen(false)}>{link}</a>
         ))}
+        <a href="/admin" style={{ display:"block", padding:"14px 28px", color:"rgba(201,169,110,0.9)", textDecoration:"none", fontFamily:"'DM Sans', sans-serif", fontSize:16, fontWeight:500, borderBottom:`1px solid ${t.border}`, background:"transparent" }}>🔐 Admin Portal</a>
         <button className="btn-primary mobile-book-btn" onClick={() => { setMenuOpen(false); openBooking(); }}>
           Reserve Your Stay →
         </button>
@@ -2028,19 +2090,7 @@ export default function GmalinaCourtWebsite() {
       </section>
 
       {/* ─── PAY OVERLAY (iframe — keeps payment inside the website) ─── */}
-      {payUrl && (
-        <div className="pay-overlay" onClick={() => setPayUrl("")}>
-          <div className="pay-overlay-inner" onClick={e => e.stopPropagation()}>
-            <button className="pay-overlay-close" onClick={() => setPayUrl("")}>×</button>
-            <iframe
-              src={payUrl}
-              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-              allow="payment"
-              title="Secure Payment"
-            />
-          </div>
-        </div>
-      )}
+{/* Pay overlay removed — PayChangu opens in a new tab now */}
 
       {/* ─── BOOKING MODAL ─── */}
       {bookingOpen && (
@@ -2238,7 +2288,7 @@ export default function GmalinaCourtWebsite() {
                     <div style={{ marginTop:8, background:"rgba(20,160,140,0.07)", border:"1px solid rgba(20,160,140,0.25)", borderRadius:10, padding:"10px 12px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
                       <div>
                         <div style={{ fontWeight:700, fontSize:13, color:"#14a08c" }}>Deposit Due Now (20%)</div>
-                        <div style={{ fontSize:10, color:t.textFaint, marginTop:2 }}>Paid · secure</div>
+                        <div style={{ fontSize:10, color:t.textFaint, marginTop:2 }}>Paid via PayChangu · secure</div>
                       </div>
                       <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(16px,4vw,20px)", fontWeight:900, color:"#14a08c" }}>{fmtMWK(depositAmount)}</div>
                     </div>
@@ -2303,12 +2353,55 @@ export default function GmalinaCourtWebsite() {
 
             {/* Footer */}
             <div className="bk-footer">
-              {bookingStep === 1 && (<><button className="btn-primary" onClick={bookingNext}>Continue to Stay Details →</button><button className="btn-outline" onClick={closeBooking}>Cancel</button></>)}
-              {bookingStep === 2 && (<><button className="btn-primary" onClick={bookingNext}>Continue to Preferences →</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(1); }}>← Back</button></>)}
-              {bookingStep === 3 && (<><button className="btn-primary" style={{ opacity:bookingLoading?.7:1 }} onClick={saveAndPay} disabled={bookingLoading}>{bookingLoading ? <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}><span style={{ width:13,height:13,border:"2px solid rgba(0,0,0,.2)",borderTop:"2px solid #08090a",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite" }} />Saving…</span> : "Review & Pay →"}</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button></>)}
-              {bookingStep === 4 && (<><button className="btn-pay" onClick={openPayChangu}>🔒 Pay {fmtMWK(depositAmount)} Deposit</button><button className="btn-outline" onClick={() => { setBookingError(""); setBookingStep(3); }}>← Back</button></>)}
-              {bookingStep === 4 && (<div style={{ width:"100%", textAlign:"center" }}><button onClick={markPaymentDone} style={{ background:"none",border:"none",color:t.textFaint,fontSize:11,cursor:"pointer",textDecoration:"underline",fontFamily:"'DM Sans',sans-serif" }}></button></div>)}
-              {bookingStep === 5 && (<><button className="btn-primary" onClick={closeBooking}>Close</button><button className="btn-outline" onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button></>)}
+              {bookingStep === 1 && (<>
+                <button className="btn-primary bk-btn-main" onClick={bookingNext}>Continue to Stay Details →</button>
+                <button className="btn-outline bk-btn-back" onClick={closeBooking}>Cancel</button>
+              </>)}
+              {bookingStep === 2 && (<>
+                <button className="btn-primary bk-btn-main" onClick={bookingNext}>Continue to Preferences →</button>
+                <button className="btn-outline bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(1); }}>← Back</button>
+              </>)}
+              {bookingStep === 3 && (<>
+                <button className="btn-primary bk-btn-main" style={{ opacity:bookingLoading?0.7:1 }} onClick={saveAndPay} disabled={bookingLoading}>
+                  {bookingLoading
+                    ? <span style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ width:13,height:13,border:"2px solid rgba(0,0,0,.2)",borderTop:"2px solid #08090a",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite" }} />Saving…</span>
+                    : "Review & Pay →"}
+                </button>
+                <button className="btn-outline bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button>
+              </>)}
+              {bookingStep === 4 && !payUrl && (<>
+                <button className="btn-pay bk-btn-main" onClick={openPayChangu}>
+                  <span className="btn-pay-lock">🔒</span>
+                  <span>Pay {fmtMWK(depositAmount)} Deposit</span>
+                </button>
+                <button className="btn-back bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(3); }}>
+                  ← Back
+                </button>
+              </>)}
+              {bookingStep === 4 && payUrl === "waiting" && (
+                <div style={{ width:"100%", display:"flex", flexDirection:"column", alignItems:"center", gap:10, padding:"6px 0" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, color:"#14a08c", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600 }}>
+                    <span style={{ width:16, height:16, border:"2.5px solid rgba(20,160,140,0.25)", borderTop:"2.5px solid #14a08c", borderRadius:"50%", display:"inline-block", animation:"spin .8s linear infinite", flexShrink:0 }} />
+                    Waiting for payment confirmation…
+                  </div>
+                  <p style={{ margin:0, fontSize:12, color:t.textFaint, textAlign:"center", lineHeight:1.5 }}>
+                    Complete the payment in the tab that just opened. This will update automatically.
+                  </p>
+                  <div style={{ display:"flex", gap:10, width:"100%", flexWrap:"wrap" }}>
+                    <button className="btn-back bk-btn-back" style={{ flex:1 }} onClick={() => { setPayUrl(""); }}>
+                      ← Cancel payment
+                    </button>
+                    <button className="btn-back bk-btn-back" style={{ flex:1 }} onClick={() => openPayChangu()}>
+                      Reopen payment tab ↗
+                    </button>
+                  </div>
+                  <button onClick={() => markPaymentDone()} style={{ background:"none", border:"none", color:t.textFaint, fontSize:11, cursor:"pointer", textDecoration:"underline", fontFamily:"'DM Sans',sans-serif" }}>[Test: simulate success]</button>
+                </div>
+              )}
+              {bookingStep === 5 && (<>
+                <button className="btn-primary bk-btn-main" onClick={closeBooking}>Close</button>
+                <button className="btn-outline bk-btn-back" onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button>
+              </>)}
             </div>
           </div>
         </div>
@@ -2346,7 +2439,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: t.textFaint, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
