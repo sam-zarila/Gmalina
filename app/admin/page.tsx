@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import {
   getFirestore, collection, getDocs, doc, updateDoc,
-  query, orderBy, Firestore, Timestamp
+  Firestore, Timestamp
 } from "firebase/firestore";
 
 // Firebase is initialised lazily inside the component (avoids SSR crash)
@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [tab, setTab]               = useState<Tab>("overview");
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(false);
+  const [loadError, setLoadError]   = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch]         = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -107,14 +108,32 @@ export default function AdminPage() {
   // ── Load bookings from Firestore ──
   const loadBookings = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const db = getDB();
-      const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
+      // Use simple collection fetch — no orderBy to avoid missing-index errors
+      const snap = await getDocs(collection(db, "bookings"));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+      // Sort client-side: newest first (handles missing createdAt gracefully)
+      data.sort((a, b) => {
+        const ta = a.createdAt?.toMillis?.() ?? 0;
+        const tb = b.createdAt?.toMillis?.() ?? 0;
+        return tb - ta;
+      });
       setBookings(data);
+      if (data.length === 0) setLoadError("No bookings found in the database yet.");
     } catch (e: any) {
-      console.error("Failed to load bookings:", e);
+      console.error("❌ Failed to load bookings:", e);
+      const msg = e?.message || "";
+      if (msg.includes("permission-denied") || msg.includes("PERMISSION_DENIED")) {
+        setLoadError("Firestore permission denied. Update your security rules to allow reads.");
+      } else if (msg.includes("not-found") || msg.includes("NOT_FOUND")) {
+        setLoadError("Firestore database not found. Check your Firebase project config.");
+      } else if (msg.includes("unavailable") || msg.includes("UNAVAILABLE")) {
+        setLoadError("Firestore is unreachable. Check your internet connection.");
+      } else {
+        setLoadError("Failed to load bookings: " + (msg || "Unknown error"));
+      }
     } finally {
       setLoading(false);
     }
@@ -186,26 +205,39 @@ export default function AdminPage() {
     return                                     { label: status,             color: t.textFaint, bg: "transparent",         border: t.border                };
   };
 
+  const G = {
+    adm_input: `width:100%;border:1.5px solid ${t.inputBorder};background:${t.inputBg};border-radius:10px;padding:11px 14px;color:${t.text};font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s;`,
+  };
+  const globalCSS = [
+    "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');",
+    "*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}",
+    "::-webkit-scrollbar{width:3px;height:3px;}",
+    "::-webkit-scrollbar-thumb{background:#c9a96e;border-radius:2px;}",
+    `.adm-input{width:100%;background:${t.inputBg};border:1.5px solid ${t.inputBorder};border-radius:10px;padding:11px 14px;color:${t.text};font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}`,
+    ".adm-input:focus{border-color:#c9a96e;box-shadow:0 0 0 3px rgba(201,169,110,0.1);}",
+    `.adm-input::placeholder{color:${t.textFaint};}`,
+    `.adm-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid ${t.border};transition:background .15s;cursor:pointer;}`,
+    `.adm-row:hover{background:${isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"};}`,
+    ".adm-row:last-child{border-bottom:none;}",
+    `.tab-btn{background:transparent;border:none;padding:10px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;color:${t.textFaint};}`,
+    ".tab-btn.active{background:rgba(201,169,110,0.12);color:#c9a96e;font-weight:600;}",
+    `.tab-btn:hover:not(.active){color:${t.textMuted};background:${isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.04)"};}`,
+    `.filter-btn{padding:6px 14px;border-radius:100px;border:1px solid ${t.border};background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;color:${t.textFaint};}`,
+    ".filter-btn.active{background:rgba(201,169,110,0.12);border-color:rgba(201,169,110,0.3);color:#c9a96e;font-weight:600;}",
+    `.filter-btn:hover:not(.active){border-color:rgba(201,169,110,0.25);color:${t.textMuted};}`,
+    ".action-btn{padding:7px 14px;border-radius:8px;border:1.5px solid;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}",
+    "@media(max-width:768px){.adm-table-hide{display:none!important;}}",
+  ].join("\n");
+
   // ════════════════════════════════════════════════════════════════════════════
   // ── LOGIN PAGE ──
   // ════════════════════════════════════════════════════════════════════════════
   if (!authed) {
     return (
-      <div style={{ minHeight: "100vh", background: isDark ? "#08090a" : "#f8f5f0", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'DM Sans', sans-serif", backgroundImage: isDark ? "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.07) 0%, transparent 60%)" : "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.15) 0%, transparent 60%)" }}>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
-          * { box-sizing: border-box; margin:0; padding:0; }
-          .adm-input {
-            width:100%; background:${t.inputBg}; border:1.5px solid ${t.inputBorder};
-            border-radius:12px; padding:13px 16px; color:${t.text};
-            font-family:'DM Sans',sans-serif; font-size:15px; outline:none;
-            transition:border-color .2s;
-          }
-          .adm-input:focus { border-color:#c9a96e; box-shadow:0 0 0 3px rgba(201,169,110,0.1); }
-          .adm-input::placeholder { color:${t.textFaint}; }
-        `}</style>
-
-        <div style={{ width: "100%", maxWidth: 420 }}>
+      <>
+      <style dangerouslySetInnerHTML={{ __html: globalCSS }} />
+      <div style={{ minHeight: "100vh", backgroundColor: isDark ? "#08090a" : "#f8f5f0", backgroundImage: isDark ? "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 90%, rgba(20,160,140,0.07) 0%, transparent 60%)" : "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,169,110,0.15) 0%, transparent 60%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
+                <div style={{ width: "100%", maxWidth: 420 }}>
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <div style={{ width: 56, height: 56, borderRadius: 14, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 16px" }}>🏛️</div>
@@ -272,6 +304,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+    </>
     );
   }
 
@@ -279,37 +312,10 @@ export default function AdminPage() {
   // ── DASHBOARD ──
   // ════════════════════════════════════════════════════════════════════════════
   return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: globalCSS }} />
     <div style={{ minHeight: "100vh", background: t.bg, color: t.text, fontFamily: "'DM Sans',sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; }
-        ::-webkit-scrollbar { width:3px; height:3px; }
-        ::-webkit-scrollbar-thumb { background:#c9a96e; border-radius:2px; }
-        .adm-row { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid ${t.border}; transition:background .15s; cursor:pointer; }
-        .adm-row:hover { background:${isDark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"}; }
-        .adm-row:last-child { border-bottom:none; }
-        .adm-input {
-          background:${t.inputBg}; border:1.5px solid ${t.inputBorder};
-          border-radius:10px; padding:9px 14px; color:${t.text};
-          font-family:'DM Sans',sans-serif; font-size:14px; outline:none;
-          transition:border-color .2s;
-        }
-        .adm-input:focus { border-color:#c9a96e; }
-        .adm-input::placeholder { color:${t.textFaint}; }
-        .tab-btn { background:transparent; border:none; padding:10px 20px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all .2s; color:${t.textFaint}; }
-        .tab-btn.active { background:rgba(201,169,110,0.12); color:#c9a96e; font-weight:600; }
-        .tab-btn:hover:not(.active) { color:${t.textMuted}; background:${isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.04)"}; }
-        .filter-btn { padding:6px 14px; border-radius:100px; border:1px solid ${t.border}; background:transparent; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:all .2s; color:${t.textFaint}; }
-        .filter-btn.active { background:rgba(201,169,110,0.12); border-color:rgba(201,169,110,0.3); color:#c9a96e; font-weight:600; }
-        .filter-btn:hover:not(.active) { border-color:rgba(201,169,110,0.25); color:${t.textMuted}; }
-        .action-btn { padding:7px 14px; border-radius:8px; border:1.5px solid; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; }
-        @media (max-width:768px) {
-          .adm-table-hide { display:none !important; }
-          .adm-sidebar { display:none !important; }
-        }
-      `}</style>
-
-      {/* ── TOP NAV ── */}
+            {/* ── TOP NAV ── */}
       <nav style={{ background: t.navBg, borderBottom: `1px solid ${t.border}`, padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(16px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏛️</div>
@@ -373,6 +379,12 @@ export default function AdminPage() {
               </div>
               {loading ? (
                 <div style={{ padding: 40, textAlign: "center", color: t.textFaint }}>Loading…</div>
+              ) : loadError ? (
+                <div style={{ padding: 32, textAlign:"center" }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>⚠️</div>
+                  <div style={{ fontSize:14, color:"#e05555", fontFamily:"'DM Sans',sans-serif", lineHeight:1.6 }}>{loadError}</div>
+                  <button onClick={loadBookings} style={{ marginTop:14, background:"rgba(201,169,110,0.12)", border:"1px solid rgba(201,169,110,0.3)", color:"#c9a96e", padding:"8px 20px", borderRadius:100, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600 }}>Retry</button>
+                </div>
               ) : bookings.length === 0 ? (
                 <div style={{ padding: 40, textAlign: "center", color: t.textFaint }}>No bookings yet.</div>
               ) : (
@@ -431,6 +443,12 @@ export default function AdminPage() {
 
               {loading ? (
                 <div style={{ padding: 40, textAlign: "center", color: t.textFaint }}>Loading bookings…</div>
+              ) : loadError ? (
+                <div style={{ padding: 32, textAlign:"center" }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>⚠️</div>
+                  <div style={{ fontSize:14, color:"#e05555", fontFamily:"'DM Sans',sans-serif", lineHeight:1.6 }}>{loadError}</div>
+                  <button onClick={loadBookings} style={{ marginTop:14, background:"rgba(201,169,110,0.12)", border:"1px solid rgba(201,169,110,0.3)", color:"#c9a96e", padding:"8px 20px", borderRadius:100, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600 }}>Retry</button>
+                </div>
               ) : filtered.length === 0 ? (
                 <div style={{ padding: 40, textAlign: "center", color: t.textFaint }}>No bookings match the current filter.</div>
               ) : (
@@ -650,5 +668,6 @@ export default function AdminPage() {
         Gmalina Court Lodge · Admin Portal · Liwonde, Malawi
       </div>
     </div>
+  </>
   );
 }
