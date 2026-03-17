@@ -2477,7 +2477,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: t.textFaint, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
