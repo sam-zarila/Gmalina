@@ -45,45 +45,51 @@ function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
 const NAV_LINKS = ["About", "Rooms", "Facilities", "Gallery", "Blog", "FAQ", "Contact"];
 
 // ── Lodge & Safari placeholder images ──
+// ─── Local image paths — all photos served from public/images/ ───────────────
 const IMGS = {
-  // Hero & About
-  heroPool:      "https://images.unsplash.com/photo-1587502537745-84b86da1204f?w=1800&q=80",  // safari lodge pool at sunset
-  aboutLodge:    "https://images.unsplash.com/photo-1615729947596-a598e5de0ab3?w=900&q=80",   // thatched lodge exterior
-  aboutNature:   "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&q=80",   // African wildlife river
-  aboutDining:   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80",   // fine dining table
-  // Rooms / Suites
-  room1:         "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&q=80",   // luxury bedroom safari view
-  room2:         "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=900&q=80",   // premium hotel suite
-  room3:         "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=900&q=80",   // elegant lodge room
-  // Facilities
-  pool:          "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=700&q=80",   // infinity pool Africa view
-  restaurant:    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80",   // restaurant dining
-  conference:    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=80",   // conference room
-  gym:           "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=80",   // modern gym
-  bar:           "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=700&q=80",      // bar lounge
-  garden:        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80",   // lodge garden terrace
-  // Attractions / Nature
-  safari:        "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=900&q=80",      // elephant safari
-  lake:          "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=900&q=80",   // lake at sunset
-  liwonde:       "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&q=80",   // African river wildlife
-  sunset:        "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=80",   // African sunset
-  // Gallery
-  gal1:          "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",   // pool
-  gal2:          "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",   // bedroom
-  gal3:          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",   // dining
-  gal4:          "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80",      // safari
-  gal5:          "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",   // conference
-  gal6:          "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&q=80",   // room
-  gal7:          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",   // garden
-  gal8:          "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=800&q=80",      // bar
-  gal9:          "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80",   // sunrise
-  // Blog
-  blog1:         "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&q=80",   // wildlife
-  blog2:         "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",   // cuisine
-  blog3:         "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",   // corporate
-  blog4:         "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80",   // lake
-  blog5:         "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80",   // pool morning
-  blog6:         "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",   // lodge room
+  // ── Hero & About ─────────────────────────────────────────────────────────
+  heroPool:    "/images/hero.jpg",          // ✅ hero.jpg — main hero background
+  aboutLodge:  "/images/outside.jpg",       // ✅ outside.jpg — lodge exterior
+  aboutNature: "/images/out.jpg",           // ✅ out.jpg — outdoor/nature view
+  aboutDining: "/images/living.jpg",        // ✅ living.jpg — lounge/living area
+
+  // ── Rooms ────────────────────────────────────────────────────────────────
+  room1:       "/images/gmalina-room.jpg",  // ✅ gmalina-room.jpg — featured deluxe room
+  room2:       "/images/bed.jpg",           // ✅ bed.jpg — classic bedroom
+  room3:       "/images/tv.jpg",            // ✅ tv.jpg — room with TV/living area
+
+  // ── Facilities ───────────────────────────────────────────────────────────
+  pool:        "/images/pool.jpg",          // ✅ pool.jpg — swimming pool
+  restaurant:  "/images/living.jpg",        // ✅ living.jpg — dining/lounge
+  conference:  "/images/conference.jpg",    // ✅ conference.jpg — conference room
+  gym:         "/images/gym.jpg",           // ✅ gym.jpg — fitness centre
+  bar:         "/images/pool2.jpg",         // ✅ pool2.jpg — poolside bar area
+  garden:      "/images/outside.jpg",       // ✅ outside.jpg — outdoor/garden
+
+  // ── Attractions ──────────────────────────────────────────────────────────
+  safari:      "/images/yala.jpg",          // ✅ yala.jpg — wildlife/safari
+  lake:        "/images/out.jpg",           // ✅ out.jpg — outdoor water/lake view
+  liwonde:     "/images/board.jpg",         // ✅ board.jpg — local area/market
+  sunset:      "/images/hero.jpg",          // ✅ hero.jpg — sunset/landscape
+
+  // ── Gallery (9 photos — best variety of your shots) ──────────────────────
+  gal1:        "/images/pool.jpg",          // Pool
+  gal2:        "/images/gmalina-room.jpg",  // Deluxe room
+  gal3:        "/images/living.jpg",        // Lounge/dining
+  gal4:        "/images/yala.jpg",          // Wildlife/safari
+  gal5:        "/images/conference.jpg",    // Conference
+  gal6:        "/images/bed.jpg",           // Bedroom
+  gal7:        "/images/outside.jpg",       // Exterior/garden
+  gal8:        "/images/pool2.jpg",         // Pool 2
+  gal9:        "/images/out.jpg",           // Outdoor view
+
+  // ── Blog thumbnails ───────────────────────────────────────────────────────
+  blog1:       "/images/yala.jpg",          // Wildlife post
+  blog2:       "/images/living.jpg",        // Cuisine/dining post
+  blog3:       "/images/conference.jpg",    // Events/corporate post
+  blog4:       "/images/out.jpg",           // Lifestyle/outdoor post
+  blog5:       "/images/pool.jpg",          // Wellness/pool post
+  blog6:       "/images/gmalina-room.jpg",  // Room/culture post
 };
 
 interface GalleryItem {
@@ -96,15 +102,15 @@ interface GalleryItem {
 }
 
 const GALLERY_ITEMS: GalleryItem[] = [
-  { emoji: "🏊", label: "Swimming Pool", category: "Facilities", span: "wide", bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=900&q=80" },
-  { emoji: "🛏️", label: "Deluxe Suite", category: "Rooms", span: "tall", bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&q=80" },
-  { emoji: "🍽️", label: "Fine Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=80" },
-  { emoji: "🦁", label: "Safari Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(180,140,30,0.25), rgba(50,40,0,0.6))", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=900&q=80" },
-  { emoji: "🎤", label: "Conference Hall", category: "Business", span: "normal", bg: "linear-gradient(135deg, rgba(60,80,180,0.2), rgba(10,10,50,0.6))", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&q=80" },
-  { emoji: "💪", label: "Fitness Center", category: "Facilities", span: "normal", bg: "linear-gradient(135deg, rgba(20,160,100,0.2), rgba(0,30,20,0.6))", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80" },
-  { emoji: "🌿", label: "Garden Terrace", category: "Outdoors", span: "tall", bg: "linear-gradient(135deg, rgba(40,140,60,0.2), rgba(0,20,0,0.6))", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=900&q=80" },
-  { emoji: "🍹", label: "Poolside Bar", category: "Bar", span: "normal", bg: "linear-gradient(135deg, rgba(200,100,20,0.2), rgba(50,20,0,0.6))", img: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?w=900&q=80" },
-  { emoji: "🌅", label: "Sunrise Views", category: "Nature", span: "wide", bg: "linear-gradient(135deg, rgba(220,120,40,0.25), rgba(60,20,0,0.6))", img: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=80" },
+  { emoji: "🏊", label: "Swimming Pool",    category: "Facilities", span: "wide",   bg: "linear-gradient(135deg, rgba(20,160,140,0.25), rgba(8,60,80,0.6))",    img: "/images/pool.jpg" },
+  { emoji: "🛏️", label: "Deluxe Suite",    category: "Rooms",      span: "tall",   bg: "linear-gradient(135deg, rgba(201,169,110,0.2), rgba(60,30,10,0.6))",   img: "/images/gmalina-room.jpg" },
+  { emoji: "🍽️", label: "Lounge & Dining", category: "Restaurant", span: "normal", bg: "linear-gradient(135deg, rgba(180,60,40,0.2), rgba(40,10,10,0.6))",    img: "/images/living.jpg" },
+  { emoji: "🦁", label: "Safari Views",    category: "Nature",     span: "wide",   bg: "linear-gradient(135deg, rgba(180,140,30,0.25), rgba(50,40,0,0.6))",   img: "/images/yala.jpg" },
+  { emoji: "🎤", label: "Conference Hall", category: "Business",   span: "normal", bg: "linear-gradient(135deg, rgba(60,80,180,0.2), rgba(10,10,50,0.6))",    img: "/images/conference.jpg" },
+  { emoji: "💪", label: "Fitness Center",  category: "Facilities", span: "normal", bg: "linear-gradient(135deg, rgba(20,160,100,0.2), rgba(0,30,20,0.6))",    img: "/images/gym.jpg" },
+  { emoji: "🌿", label: "Garden Terrace",  category: "Outdoors",   span: "tall",   bg: "linear-gradient(135deg, rgba(40,140,60,0.2), rgba(0,20,0,0.6))",      img: "/images/outside.jpg" },
+  { emoji: "🍹", label: "Poolside Bar",    category: "Bar",        span: "normal", bg: "linear-gradient(135deg, rgba(200,100,20,0.2), rgba(50,20,0,0.6))",    img: "/images/pool2.jpg" },
+  { emoji: "🌅", label: "Outdoor Views",   category: "Nature",     span: "wide",   bg: "linear-gradient(135deg, rgba(220,120,40,0.25), rgba(60,20,0,0.6))",   img: "/images/out.jpg" },
 ];
 
 const GALLERY_FILTERS = ["All", "Rooms", "Facilities", "Restaurant", "Nature", "Business", "Outdoors", "Bar"];
@@ -145,12 +151,12 @@ const FAQS = [
 ];
 
 const BLOGS = [
-  { category: "Travel Guide", title: "The Ultimate Safari Guide to Liwonde National Park", excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.", date: "Jan 15, 2025", readTime: "8 min read", emoji: "🦁", color: "rgba(201,169,110,0.15)", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80" },
-  { category: "Cuisine", title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant", excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi.", date: "Feb 3, 2025", readTime: "5 min read", emoji: "🍽️", color: "rgba(20,160,140,0.12)", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80" },
-  { category: "Events", title: "How to Plan the Perfect Corporate Retreat in Malawi", excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue.", date: "Feb 20, 2025", readTime: "6 min read", emoji: "💼", color: "rgba(100,80,200,0.12)", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
-  { category: "Lifestyle", title: "Lake Malawi: A Weekend Escape from the Lodge", excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages.", date: "Mar 1, 2025", readTime: "7 min read", emoji: "🌊", color: "rgba(20,100,180,0.12)", img: "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80" },
-  { category: "Wellness", title: "Morning Rituals: How Our Guests Start the Perfect Day", excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.", date: "Mar 8, 2025", readTime: "4 min read", emoji: "🌅", color: "rgba(220,120,40,0.12)", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80" },
-  { category: "Culture", title: "Exploring Malawian Craft Markets: A Buyer's Guide", excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically.", date: "Mar 14, 2025", readTime: "5 min read", emoji: "🏺", color: "rgba(180,80,40,0.12)", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80" },
+  { category: "Travel Guide", title: "The Ultimate Safari Guide to Liwonde National Park", excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.", date: "Jan 15, 2025", readTime: "8 min read", emoji: "🦁", color: "rgba(201,169,110,0.15)", img: "/images/blog1.jpg" },
+  { category: "Cuisine", title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant", excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi.", date: "Feb 3, 2025", readTime: "5 min read", emoji: "🍽️", color: "rgba(20,160,140,0.12)", img: "/images/blog2.jpg" },
+  { category: "Events", title: "How to Plan the Perfect Corporate Retreat in Malawi", excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue.", date: "Feb 20, 2025", readTime: "6 min read", emoji: "💼", color: "rgba(100,80,200,0.12)", img: "/images/blog3.jpg" },
+  { category: "Lifestyle", title: "Lake Malawi: A Weekend Escape from the Lodge", excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages.", date: "Mar 1, 2025", readTime: "7 min read", emoji: "🌊", color: "rgba(20,100,180,0.12)", img: "/images/blog4.jpg" },
+  { category: "Wellness", title: "Morning Rituals: How Our Guests Start the Perfect Day", excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.", date: "Mar 8, 2025", readTime: "4 min read", emoji: "🌅", color: "rgba(220,120,40,0.12)", img: "/images/blog5.jpg" },
+  { category: "Culture", title: "Exploring Malawian Craft Markets: A Buyer's Guide", excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically.", date: "Mar 14, 2025", readTime: "5 min read", emoji: "🏺", color: "rgba(180,80,40,0.12)", img: "/images/blog6.jpg" },
 ];
 
 function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement | null>, boolean] {
@@ -184,12 +190,12 @@ function AnimSection({ children, className = "", delay = 0 }: AnimSectionProps) 
 }
 
 const FACILITIES = [
-  { icon: "🛏️", title: "Luxury Accommodation", desc: "Spacious suites with en-suite bathrooms, premium linens, smart TV, high-speed Wi-Fi, and panoramic views of Liwonde.", img: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&q=80" },
-  { icon: "🎤", title: "Conference Facilities", desc: "Fully equipped halls for up to 100 guests, with 4K AV equipment, high-speed connectivity, and professional catering.", img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&q=80" },
-  { icon: "🍽️", title: "Bar & Restaurant", desc: "Award-winning cuisine blending local Malawian flavors with international gastronomy, paired with curated beverages.", img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80" },
-  { icon: "💪", title: "Premium Gym", desc: "State-of-the-art fitness center with modern cardio, free weights, and personal training on request.", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=80" },
-  { icon: "🏊", title: "Swimming Pool", desc: "Heated outdoor pool with sun loungers, poolside bar service, and stunning garden views.", img: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=700&q=80" },
-  { icon: "🌿", title: "Garden & Terrace", desc: "Lush tropical gardens with private terraces—perfect for evening sundowners or romantic dinners.", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80" },
+  { icon: "🛏️", title: "Luxury Accommodation", desc: "Spacious suites with en-suite bathrooms, premium linens, smart TV, high-speed Wi-Fi, and panoramic views of Liwonde.", img: "/images/gmalina-room.jpg" },
+  { icon: "🎤", title: "Conference Facilities", desc: "Fully equipped halls for up to 100 guests, with 4K AV equipment, high-speed connectivity, and professional catering.", img: "/images/conference.jpg" },
+  { icon: "🍽️", title: "Bar & Restaurant", desc: "Award-winning cuisine blending local Malawian flavors with international gastronomy, paired with curated beverages.", img: "/images/living.jpg" },
+  { icon: "💪", title: "Premium Gym", desc: "State-of-the-art fitness center with modern cardio, free weights, and personal training on request.", img: "/images/gym.jpg" },
+  { icon: "🏊", title: "Swimming Pool", desc: "Heated outdoor pool with sun loungers, poolside bar service, and stunning garden views.", img: "/images/pool.jpg" },
+  { icon: "🌿", title: "Garden & Terrace", desc: "Lush tropical gardens with private terraces—perfect for evening sundowners or romantic dinners.", img: "/images/outside.jpg" },
 ];
 
 const GUEST_TYPES = [
@@ -200,9 +206,9 @@ const GUEST_TYPES = [
 ];
 
 const ATTRACTIONS = [
-  { icon: "🦁", title: "Liwonde National Park", dist: "5 min away", desc: "One of Africa's premier safari destinations—home to elephants, hippos, lions, and over 400 bird species.", img: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=700&q=80" },
-  { icon: "🌊", title: "Lake Malawi", dist: "45 min away", desc: "The 'Calendar Lake'—crystal-clear waters, sandy beaches, and world-class snorkeling in the lake of stars.", img: "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=700&q=80" },
-  { icon: "🏺", title: "Liwonde Town Markets", dist: "2 min away", desc: "Vibrant local markets brimming with handcrafted goods, fresh produce, and authentic Malawian culture.", img: "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=700&q=80" },
+  { icon: "🦁", title: "Liwonde National Park", dist: "5 min away", desc: "One of Africa\'s premier safari destinations—home to elephants, hippos, lions, and over 400 bird species.", img: "/images/yala.jpg" },
+  { icon: "🌊", title: "Lake Malawi", dist: "45 min away", desc: "The \'Calendar Lake\'—crystal-clear waters, sandy beaches, and world-class snorkeling in the lake of stars.", img: "/images/out.jpg" },
+  { icon: "🏺", title: "Liwonde Town Markets", dist: "2 min away", desc: "Vibrant local markets brimming with handcrafted goods, fresh produce, and authentic Malawian culture.", img: "/images/board.jpg" },
 ];
 
 const TESTIMONIALS = [
@@ -1250,12 +1256,11 @@ export default function GmalinaCourtWebsite() {
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: "10px",
-            background: "linear-gradient(135deg, #c9a96e, #e8d5a3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18, flexShrink: 0
-          }}>🏛️</div>
+          <img
+            src="/images/logo.jpg"
+            alt="Gmalina Court Lodge"
+            style={{ width: 38, height: 38, borderRadius: "10px", objectFit: "cover", flexShrink: 0 }}
+          />
           <div>
             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, lineHeight: 1.1, color: t.text }}>
               Gmalina Court
@@ -2137,7 +2142,7 @@ export default function GmalinaCourtWebsite() {
             <div className="bk-header">
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
-                  <div style={{ width:26, height:26, borderRadius:6, background:"linear-gradient(135deg,#c9a96e,#e8d5a3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0 }}>🏛️</div>
+                  <img src="/images/logo.jpg" alt="Gmalina Court" style={{ width:26, height:26, borderRadius:6, objectFit:"cover", flexShrink:0 }} />
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, color:t.text, lineHeight:1.1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>Reserve Your Stay</div>
                     <div style={{ fontSize:10, color:t.textFaint }}>Gmalina Court Lodge</div>
@@ -2449,7 +2454,7 @@ export default function GmalinaCourtWebsite() {
           <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 64 }}>
             <div className="footer-brand">
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 38, height: 38, borderRadius: "10px", background: "linear-gradient(135deg, #c9a96e, #e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏛️</div>
+                <img src="/images/logo.jpg" alt="Gmalina Court Lodge" style={{ width: 38, height: 38, borderRadius: "10px", objectFit: "cover" }} />
                 <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700 }}>Gmalina Court</span>
               </div>
               <p style={{ color: t.textFaint, lineHeight: 1.8, fontSize: 14, fontFamily: "'DM Sans', sans-serif", maxWidth: 280 }}>

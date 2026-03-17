@@ -366,7 +366,7 @@ export default function AdminPage() {
                 <div style={{ width: "100%", maxWidth: 420 }}>
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 14, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 16px" }}>🏛️</div>
+            <img src="/images/logo.jpg" alt="Gmalina Court" style={{ width: 56, height: 56, borderRadius: 14, objectFit: "cover", margin: "0 auto 16px", display: "block" }} />
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: t.text, lineHeight: 1.1 }}>Gmalina Court</div>
             <div style={{ fontSize: 12, color: t.textFaint, letterSpacing: "0.15em", textTransform: "uppercase", marginTop: 4 }}>Admin Portal</div>
           </div>
@@ -444,7 +444,7 @@ export default function AdminPage() {
             {/* ── TOP NAV ── */}
       <nav style={{ background: t.navBg, borderBottom: `1px solid ${t.border}`, padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(16px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg,#c9a96e,#e8d5a3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏛️</div>
+          <img src="/images/logo.jpg" alt="Gmalina Court" style={{ width: 34, height: 34, borderRadius: 9, objectFit: "cover" }} />
           <div>
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 700, lineHeight: 1.1, color: t.text }}>Gmalina Court</div>
             <div style={{ fontSize: 10, color: t.textFaint, letterSpacing: "0.12em", textTransform: "uppercase" }}>Admin Dashboard</div>
