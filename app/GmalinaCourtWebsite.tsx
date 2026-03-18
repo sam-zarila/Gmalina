@@ -151,12 +151,12 @@ const FAQS = [
 ];
 
 const BLOGS = [
-  { category: "Travel Guide", title: "The Ultimate Safari Guide to Liwonde National Park", excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.", date: "Jan 15, 2025", readTime: "8 min read", emoji: "🦁", color: "rgba(201,169,110,0.15)", img: "/images/blog1.jpg" },
-  { category: "Cuisine", title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant", excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi.", date: "Feb 3, 2025", readTime: "5 min read", emoji: "🍽️", color: "rgba(20,160,140,0.12)", img: "/images/blog2.jpg" },
-  { category: "Events", title: "How to Plan the Perfect Corporate Retreat in Malawi", excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue.", date: "Feb 20, 2025", readTime: "6 min read", emoji: "💼", color: "rgba(100,80,200,0.12)", img: "/images/blog3.jpg" },
-  { category: "Lifestyle", title: "Lake Malawi: A Weekend Escape from the Lodge", excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages.", date: "Mar 1, 2025", readTime: "7 min read", emoji: "🌊", color: "rgba(20,100,180,0.12)", img: "/images/blog4.jpg" },
-  { category: "Wellness", title: "Morning Rituals: How Our Guests Start the Perfect Day", excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.", date: "Mar 8, 2025", readTime: "4 min read", emoji: "🌅", color: "rgba(220,120,40,0.12)", img: "/images/blog5.jpg" },
-  { category: "Culture", title: "Exploring Malawian Craft Markets: A Buyer's Guide", excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically.", date: "Mar 14, 2025", readTime: "5 min read", emoji: "🏺", color: "rgba(180,80,40,0.12)", img: "/images/blog6.jpg" },
+  { category: "Travel Guide", title: "The Ultimate Safari Guide to Liwonde National Park", excerpt: "Everything you need to know about visiting one of Africa's most biodiverse wilderness areas — from the best game drives to night safaris along the Shire River.", date: "Jan 15, 2025", readTime: "8 min read", emoji: "🦁", color: "rgba(201,169,110,0.15)", img: "/images/yala.jpg" },
+  { category: "Cuisine", title: "A Taste of Malawi: 7 Dishes You Must Try at Our Restaurant", excerpt: "From nsima with chambo fish to slow-roasted nyama, our head chef walks you through the rich culinary heritage of Malawi.", date: "Feb 3, 2025", readTime: "5 min read", emoji: "🍽️", color: "rgba(20,160,140,0.12)", img: "/images/living.jpg" },
+  { category: "Events", title: "How to Plan the Perfect Corporate Retreat in Malawi", excerpt: "Companies from across Africa are discovering Liwonde as a premier destination for off-site retreats. Here's why Gmalina Court is the ideal venue.", date: "Feb 20, 2025", readTime: "6 min read", emoji: "💼", color: "rgba(100,80,200,0.12)", img: "/images/conference.jpg" },
+  { category: "Lifestyle", title: "Lake Malawi: A Weekend Escape from the Lodge", excerpt: "Just 45 minutes from Gmalina Court lies the jewel of Central Africa. We guide you through the best beaches, water sports, and lakeside villages.", date: "Mar 1, 2025", readTime: "7 min read", emoji: "🌊", color: "rgba(20,100,180,0.12)", img: "/images/out.jpg" },
+  { category: "Wellness", title: "Morning Rituals: How Our Guests Start the Perfect Day", excerpt: "Early swim, garden breakfast, and a sunrise walk to the river — discover the unhurried morning rhythms that our guests keep coming back for.", date: "Mar 8, 2025", readTime: "4 min read", emoji: "🌅", color: "rgba(220,120,40,0.12)", img: "/images/pool.jpg" },
+  { category: "Culture", title: "Exploring Malawian Craft Markets: A Buyer's Guide", excerpt: "Liwonde's local markets are a treasure trove of handwoven baskets, carved wooden art, and vibrant textiles. Here's how to shop authentically.", date: "Mar 14, 2025", readTime: "5 min read", emoji: "🏺", color: "rgba(180,80,40,0.12)", img: "/images/board.jpg" },
 ];
 
 function useInView(threshold = 0.15): [React.RefObject<HTMLDivElement | null>, boolean] {
@@ -420,7 +420,8 @@ export default function GmalinaCourtWebsite() {
     setPayUrl("open");
 
     const txRef = savedBookingRef + "-" + Date.now();
-    const origin = window.location.origin;
+    // Always use production URL — callback_url is called by PayChangu servers, return_url redirects the browser
+    const PROD_URL = "https://gmalina-court.netlify.app";
 
     // ── Intercept console.log to catch PayChangu's paymentDetails signal ──
     // PayChangu logs `paymentDetails {status:'success',...}` but onSuccess callback
@@ -439,13 +440,20 @@ export default function GmalinaCourtWebsite() {
     // Restore after 10 minutes regardless (safety valve)
     const restoreLog = setTimeout(() => { console.log = _origLog; }, 600000);
 
+    // Ensure #wrapper exists in DOM before PayChangu tries to inject into it
+    if (!document.getElementById("wrapper")) {
+      const w = document.createElement("div");
+      w.id = "wrapper";
+      document.body.appendChild(w);
+    }
+
     PC({
       public_key:   pubKey,
       tx_ref:       txRef,
       amount:       depositAmount,
       currency:     "MWK",
-      callback_url: origin + "/booking/payment-success?ref=" + savedBookingRef + "&tx_ref=" + txRef,
-      return_url:   origin + "/?booking=" + savedBookingRef + "&status=paid",
+      callback_url: PROD_URL + "/booking/payment-success?ref=" + savedBookingRef + "&tx_ref=" + txRef,
+      return_url:   PROD_URL + "/?booking=" + savedBookingRef + "&status=paid",
       customer: {
         email:      form.email.trim(),
         first_name: form.firstName.trim(),
