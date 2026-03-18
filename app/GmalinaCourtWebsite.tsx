@@ -388,110 +388,49 @@ export default function GmalinaCourtWebsite() {
     }
   };
 
-  // PayChangu + jQuery loaded globally via layout.tsx <Script> tags
 
-  const openPayChangu = () => {
-    const pubKey = process.env.NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY || "";
-    if (!pubKey) {
-      setBookingError("PayChangu public key not set. Add NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY to .env.local");
-      return;
-    }
-
-    // Wait for PayChangu to load (lazyOnload means it may not be ready immediately)
-    const PC = (window as any).PaychanguCheckout;
-    if (typeof PC !== "function") {
-      setBookingError("Payment system loading… please wait a moment.");
-      let attempts = 0;
-      const retry = setInterval(() => {
-        attempts++;
-        if (typeof (window as any).PaychanguCheckout === "function") {
-          clearInterval(retry);
-          setBookingError("");
-          openPayChangu();
-        } else if (attempts > 10) {
-          clearInterval(retry);
-          setBookingError("Payment system failed to load. Please refresh the page and try again.");
-        }
-      }, 500);
-      return;
-    }
-
+  const openPayChangu = async () => {
     setBookingError("");
-    setPayUrl("open");
+    setPayUrl("loading");
 
-    const txRef = savedBookingRef + "-" + Date.now();
-    // Always use production URL — callback_url is called by PayChangu servers, return_url redirects the browser
-    const PROD_URL = "https://gmalina-court.netlify.app";
+    try {
+      // Call our own server-side API route — secret key stays on the server, no CSRF
+      const res = await fetch("/api/pay", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingRef:    savedBookingRef,
+          firestoreId,
+          amount:        depositAmount,
+          currency:      "MWK",
+          firstName:     form.firstName.trim(),
+          lastName:      form.lastName.trim(),
+          email:         form.email.trim(),
+          phone:         form.phone.trim(),
+          roomType:      form.roomType,
+          nights,
+          totalAmount,
+          depositAmount,
+          balanceAmount,
+          checkIn:       form.checkIn,
+          checkOut:      form.checkOut,
+        }),
+      });
 
-    // ── Intercept console.log to catch PayChangu's paymentDetails signal ──
-    // PayChangu logs `paymentDetails {status:'success',...}` but onSuccess callback
-    // is unreliable due to React hydration. This is the most robust detection method.
-    const _origLog = console.log.bind(console);
-    let interceptDone = false;
-    console.log = (...args: any[]) => {
-      _origLog(...args);
-      if (!interceptDone && args[0] === "paymentDetails" && args[1]?.status === "success") {
-        interceptDone = true;
-        console.log = _origLog; // restore immediately
-        setPayUrl("");
-        markPaymentDone();
+      const data = await res.json();
+
+      if (!res.ok || !data.checkout_url) {
+        throw new Error(data.error || "Could not create payment session.");
       }
-    };
-    // Restore after 10 minutes regardless (safety valve)
-    const restoreLog = setTimeout(() => { console.log = _origLog; }, 600000);
 
-    // Ensure #wrapper exists in DOM before PayChangu tries to inject into it
-    if (!document.getElementById("wrapper")) {
-      const w = document.createElement("div");
-      w.id = "wrapper";
-      document.body.appendChild(w);
+      // Show PayChangu hosted checkout in an iframe overlay inside the website
+      setPayUrl(data.checkout_url);
+
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      setPayUrl("");
+      setBookingError(err.message || "Payment could not be started. Please try again.");
     }
-
-    PC({
-      public_key:   pubKey,
-      tx_ref:       txRef,
-      amount:       depositAmount,
-      currency:     "MWK",
-      callback_url: PROD_URL + "/booking/payment-success?ref=" + savedBookingRef + "&tx_ref=" + txRef,
-      return_url:   PROD_URL + "/?booking=" + savedBookingRef + "&status=paid",
-      customer: {
-        email:      form.email.trim(),
-        first_name: form.firstName.trim(),
-        last_name:  form.lastName.trim(),
-        phone:      form.phone.trim(),
-      },
-      customization: {
-        title:       "Gmalina Court Lodge — Booking Deposit",
-        description: `20% deposit · ${form.roomType} · ${nights} night${nights !== 1 ? "s" : ""} · Ref: ${savedBookingRef}`,
-      },
-      meta: {
-        bookingRef: savedBookingRef,
-        firestoreId,
-        roomType:   form.roomType,
-        checkIn:    form.checkIn,
-        checkOut:   form.checkOut,
-        nights,
-        totalAmount,
-        depositAmount,
-        balanceAmount,
-      },
-      onSuccess: async (data: any) => {
-        // Backup — fires if PayChangu fixes their callback
-        if (!interceptDone) {
-          interceptDone = true;
-          console.log = _origLog;
-          clearTimeout(restoreLog);
-          setPayUrl("");
-          await markPaymentDone();
-        }
-      },
-      onClose: () => {
-        // User closed without paying — restore console and reset button
-        console.log = _origLog;
-        clearTimeout(restoreLog);
-        setPayUrl("");
-      },
-    });
   };
 
   const markPaymentDone = async (fid?: string) => {
@@ -506,14 +445,21 @@ export default function GmalinaCourtWebsite() {
     setBookingStep(5);
   };
 
-  // Handle return_url edge case — if PayChangu hard-navigates to /?booking=REF&status=paid
-  // detect it on mount and immediately mark as done
+  // Detect when PayChangu redirects back with ?ref=...&tx_ref=...
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
-    if (sp.get("status") === "paid" && sp.get("booking")) {
-      // Clean the URL without reloading
+    const ref    = sp.get("ref");
+    const txRef  = sp.get("tx_ref");
+    if (ref && txRef) {
       window.history.replaceState({}, "", window.location.pathname);
+      setSavedBookingRef(ref);
+      setBookingOpen(true);
+      setBookingStep(5);
+      document.body.style.overflow = "hidden";
+      // Close any open iframe overlay
+      setPayUrl("");
+      // Update Firestore
       markPaymentDone();
     }
   }, []); // eslint-disable-line
@@ -986,35 +932,9 @@ export default function GmalinaCourtWebsite() {
         .mobile-menu a:hover { color: #c9a96e; background: rgba(201,169,110,0.05); }
         .mobile-menu .mobile-book-btn { margin: 16px 28px 0; display: block; text-align: center; }
 
-        /* ── PAY OVERLAY ── */
-        .pay-overlay {
-          position: fixed; inset: 0; z-index: 20000;
-          background: rgba(0,0,0,0.88); backdrop-filter: blur(16px);
-          display: flex; align-items: center; justify-content: center;
-          animation: fadeIn 0.2s ease;
-        }
-        .pay-overlay-inner {
-          position: relative;
-          width: 95vw; max-width: 500px;
-          height: 90vh;
-          border-radius: 24px; overflow: hidden;
-          box-shadow: 0 48px 120px rgba(0,0,0,0.7);
-          border: 1px solid rgba(201,169,110,0.2);
-        }
-        .pay-overlay-close {
-          position: absolute; top: 12px; right: 12px; z-index: 10;
-          width: 32px; height: 32px; border-radius: 50%;
-          background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15);
-          color: #fff; font-size: 18px; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          transition: background 0.2s;
-        }
-        .pay-overlay-close:hover { background: rgba(201,169,110,0.3); }
 
-        /* ── PAYCHANGU WRAPPER ── */
-        /* PayChangu creates #wrapper itself — we just ensure it sits above everything */
-        #wrapper { z-index: 999999 !important; }
-        #wrapper iframe { border-radius: 16px !important; }
+
+
         /* ── BOOKING MODAL ── */
         * { box-sizing: border-box; }
         .booking-backdrop {
@@ -2135,7 +2055,29 @@ export default function GmalinaCourtWebsite() {
         </div>
       </section>
 
-      {/* PayChangu injects #wrapper itself — we must NOT render it in React (causes hydration error #418) */}
+      {/* PayChangu checkout iframe overlay */}
+      {payUrl && payUrl !== "loading" && payUrl !== "open" && (
+        <div
+          style={{ position:"fixed", inset:0, zIndex:20000, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(16px)", display:"flex", alignItems:"center", justifyContent:"center", animation:"fadeIn .2s ease" }}
+          onClick={() => setPayUrl("")}
+        >
+          <div
+            style={{ position:"relative", width:"95vw", maxWidth:520, height:"90vh", borderRadius:20, overflow:"hidden", boxShadow:"0 48px 120px rgba(0,0,0,0.7)", border:"1px solid rgba(201,169,110,0.2)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPayUrl("")}
+              style={{ position:"absolute", top:12, right:12, zIndex:10, width:32, height:32, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"1px solid rgba(255,255,255,0.15)", color:"#fff", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+            >×</button>
+            <iframe
+              src={payUrl}
+              style={{ width:"100%", height:"100%", border:"none", display:"block" }}
+              allow="payment"
+              title="Secure Payment"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ─── BOOKING MODAL ─── */}
       {bookingOpen && (
@@ -2414,17 +2356,21 @@ export default function GmalinaCourtWebsite() {
                 </button>
                 <button className="btn-outline bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button>
               </>)}
-              {bookingStep === 4 && (<>
-                <button className="btn-pay bk-btn-main" onClick={openPayChangu} disabled={payUrl === "open"}>
-                  {payUrl === "open"
-                    ? <><span style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.25)", borderTop:"2px solid #fff", borderRadius:"50%", display:"inline-block", animation:"spin .8s linear infinite" }} /> Processing…</>
-                    : <><span className="btn-pay-lock">🔒</span><span>Pay {fmtMWK(depositAmount)} Deposit</span></>
-                  }
+              {bookingStep === 4 && !payUrl && (<>
+                <button className="btn-pay bk-btn-main" onClick={openPayChangu}>
+                  <span className="btn-pay-lock">🔒</span>
+                  <span>Pay {fmtMWK(depositAmount)} Deposit</span>
                 </button>
-                <button className="btn-back bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(3); }} disabled={payUrl === "open"}>
+                <button className="btn-back bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(3); }}>
                   ← Back
                 </button>
               </>)}
+              {bookingStep === 4 && payUrl === "loading" && (
+                <div style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"8px 0", color:"#14a08c", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600 }}>
+                  <span style={{ width:16, height:16, border:"2.5px solid rgba(20,160,140,0.2)", borderTop:"2.5px solid #14a08c", borderRadius:"50%", display:"inline-block", animation:"spin .8s linear infinite" }} />
+                  Opening secure payment…
+                </div>
+              )}
               {bookingStep === 5 && (<>
                 <button className="btn-primary bk-btn-main" onClick={closeBooking}>Close</button>
                 <button className="btn-outline bk-btn-back" onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button>

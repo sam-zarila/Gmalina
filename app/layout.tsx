@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 
 // ─── Site constants ───────────────────────────────────────────────────────────
 const SITE_URL  = "https://gmalina-court.netlify.app";
@@ -267,17 +266,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
-        {/* jQuery + PayChangu — lazyOnload so they never run during SSR */}
-        <Script
-          id="jquery"
-          src="https://code.jquery.com/jquery-3.7.1.min.js"
-          strategy="lazyOnload"
-        />
-        <Script
-          id="paychangu"
-          src="https://in.paychangu.com/js/popup.js"
-          strategy="lazyOnload"
-        />
+        {/* PayChangu loaded on-demand in page.tsx when user clicks Pay */}
       </body>
     </html>
   );
