@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
         email,
         first_name:    firstName,
         last_name:     lastName,
-        callback_url:  `${PROD_URL}/payment-success?ref=${bookingRef}&tx_ref=${txRef}&status=success`,
-        return_url:    `${PROD_URL}/payment-success?ref=${bookingRef}&tx_ref=${txRef}&status=success`,
+        callback_url:  `${PROD_URL}/?ref=${bookingRef}&tx_ref=${txRef}&status=success`,
+        return_url:    `${PROD_URL}/?ref=${bookingRef}&tx_ref=${txRef}&status=success`,
         tx_ref:        txRef,
         customization: {
           title:       "Gmalina Court Lodge — Booking Deposit",
