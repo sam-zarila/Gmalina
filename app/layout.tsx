@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 
 // ─── Site constants ───────────────────────────────────────────────────────────
 const SITE_URL  = "https://gmalina-court.netlify.app";
@@ -99,15 +100,14 @@ export const metadata: Metadata = {
 
   // ── Icons ─────────────────────────────────────────────────────────────────
   icons: {
+    // Using logo.jpg until proper PNG icons are created
+    // To fix properly: generate icons at https://realfavicongenerator.net and put in public/
     icon: [
-      { url: "/favicon.ico",    sizes: "any"   },
-      { url: "/icon-192.png",   sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png",   sizes: "512x512", type: "image/png" },
+      { url: "/images/logo.jpg", type: "image/jpeg" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/images/logo.jpg", type: "image/jpeg" },
     ],
-    shortcut: "/favicon.ico",
   },
 
   // ── Web app manifest ──────────────────────────────────────────────────────
@@ -133,8 +133,6 @@ export default function RootLayout({
         {/* ── Preconnect to speed up font/image loading ── */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://images.unsplash.com" />
-
         {/* ── JSON-LD Structured Data — tells Google exactly what this business is ── */}
         <script
           type="application/ld+json"
@@ -267,7 +265,20 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* jQuery + PayChangu — lazyOnload so they never run during SSR */}
+        <Script
+          id="jquery"
+          src="https://code.jquery.com/jquery-3.7.1.min.js"
+          strategy="lazyOnload"
+        />
+        <Script
+          id="paychangu"
+          src="https://in.paychangu.com/js/popup.js"
+          strategy="lazyOnload"
+        />
+      </body>
     </html>
   );
 }

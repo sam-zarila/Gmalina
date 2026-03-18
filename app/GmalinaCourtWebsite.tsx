@@ -388,29 +388,7 @@ export default function GmalinaCourtWebsite() {
     }
   };
 
-  useEffect(() => {
-    const loadPayChangu = () => {
-      if (document.querySelector('script[src="https://in.paychangu.com/js/popup.js"]')) return;
-      const pc = document.createElement("script");
-      pc.src = "https://in.paychangu.com/js/popup.js";
-      pc.async = true;
-      document.head.appendChild(pc);
-    };
-
-    if (typeof (window as any).$ !== "undefined") {
-      loadPayChangu();
-    } else if (!document.querySelector('script[src*="jquery"]')) {
-      const jq = document.createElement("script");
-      jq.src = "https://code.jquery.com/jquery-3.7.1.min.js";
-      jq.integrity = "sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=";
-      jq.crossOrigin = "anonymous";
-      jq.onload = loadPayChangu;
-      document.head.appendChild(jq);
-    } else {
-      const existing = document.querySelector('script[src*="jquery"]') as HTMLScriptElement;
-      existing.addEventListener("load", loadPayChangu);
-    }
-  }, []);
+  // PayChangu + jQuery loaded globally via layout.tsx <Script> tags
 
   const openPayChangu = () => {
     const pubKey = process.env.NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY || "";
@@ -418,28 +396,94 @@ export default function GmalinaCourtWebsite() {
       setBookingError("PayChangu public key not set. Add NEXT_PUBLIC_PAYCHANGU_PUBLIC_KEY to .env.local");
       return;
     }
+
+    // Wait for PayChangu to load (lazyOnload means it may not be ready immediately)
+    const PC = (window as any).PaychanguCheckout;
+    if (typeof PC !== "function") {
+      setBookingError("Payment system loading… please wait a moment.");
+      let attempts = 0;
+      const retry = setInterval(() => {
+        attempts++;
+        if (typeof (window as any).PaychanguCheckout === "function") {
+          clearInterval(retry);
+          setBookingError("");
+          openPayChangu();
+        } else if (attempts > 10) {
+          clearInterval(retry);
+          setBookingError("Payment system failed to load. Please refresh the page and try again.");
+        }
+      }, 500);
+      return;
+    }
+
     setBookingError("");
-    // Clear any stale result
-    try { localStorage.removeItem("paychangu_result"); } catch {}
-    const p = new URLSearchParams({
-      ref:      savedBookingRef,
-      fid:      firestoreId,
-      room:     form.roomType,
-      checkin:  form.checkIn,
-      checkout: form.checkOut,
-      nights:   String(nights),
-      total:    String(totalAmount),
-      deposit:  String(depositAmount),
-      balance:  String(balanceAmount),
-      fname:    form.firstName.trim(),
-      lname:    form.lastName.trim(),
-      email:    form.email.trim(),
-      phone:    form.phone.trim(),
-      pk:       pubKey,
+    setPayUrl("open");
+
+    const txRef = savedBookingRef + "-" + Date.now();
+    const origin = window.location.origin;
+
+    // ── Intercept console.log to catch PayChangu's paymentDetails signal ──
+    // PayChangu logs `paymentDetails {status:'success',...}` but onSuccess callback
+    // is unreliable due to React hydration. This is the most robust detection method.
+    const _origLog = console.log.bind(console);
+    let interceptDone = false;
+    console.log = (...args: any[]) => {
+      _origLog(...args);
+      if (!interceptDone && args[0] === "paymentDetails" && args[1]?.status === "success") {
+        interceptDone = true;
+        console.log = _origLog; // restore immediately
+        setPayUrl("");
+        markPaymentDone();
+      }
+    };
+    // Restore after 10 minutes regardless (safety valve)
+    const restoreLog = setTimeout(() => { console.log = _origLog; }, 600000);
+
+    PC({
+      public_key:   pubKey,
+      tx_ref:       txRef,
+      amount:       depositAmount,
+      currency:     "MWK",
+      callback_url: origin + "/booking/payment-success?ref=" + savedBookingRef + "&tx_ref=" + txRef,
+      return_url:   origin + "/?booking=" + savedBookingRef + "&status=paid",
+      customer: {
+        email:      form.email.trim(),
+        first_name: form.firstName.trim(),
+        last_name:  form.lastName.trim(),
+        phone:      form.phone.trim(),
+      },
+      customization: {
+        title:       "Gmalina Court Lodge — Booking Deposit",
+        description: `20% deposit · ${form.roomType} · ${nights} night${nights !== 1 ? "s" : ""} · Ref: ${savedBookingRef}`,
+      },
+      meta: {
+        bookingRef: savedBookingRef,
+        firestoreId,
+        roomType:   form.roomType,
+        checkIn:    form.checkIn,
+        checkOut:   form.checkOut,
+        nights,
+        totalAmount,
+        depositAmount,
+        balanceAmount,
+      },
+      onSuccess: async (data: any) => {
+        // Backup — fires if PayChangu fixes their callback
+        if (!interceptDone) {
+          interceptDone = true;
+          console.log = _origLog;
+          clearTimeout(restoreLog);
+          setPayUrl("");
+          await markPaymentDone();
+        }
+      },
+      onClose: () => {
+        // User closed without paying — restore console and reset button
+        console.log = _origLog;
+        clearTimeout(restoreLog);
+        setPayUrl("");
+      },
     });
-    // Open pay.html in a new tab — avoids cross-origin iframe navigation block
-    window.open(`/pay.html?${p.toString()}`, "_blank", "noopener");
-    setPayUrl("waiting"); // show waiting UI in modal
   };
 
   const markPaymentDone = async (fid?: string) => {
@@ -454,35 +498,17 @@ export default function GmalinaCourtWebsite() {
     setBookingStep(5);
   };
 
-  // Listen for payment success via BroadcastChannel (same-origin new tab)
+  // Handle return_url edge case — if PayChangu hard-navigates to /?booking=REF&status=paid
+  // detect it on mount and immediately mark as done
   useEffect(() => {
-    const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("paychangu_result") : null;
-    if (bc) {
-      bc.onmessage = async (e) => {
-        if (e.data?.type === "PAYCHANGU_SUCCESS") {
-          setPayUrl("");
-          await markPaymentDone(e.data.firestoreId || undefined);
-        }
-      };
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("status") === "paid" && sp.get("booking")) {
+      // Clean the URL without reloading
+      window.history.replaceState({}, "", window.location.pathname);
+      markPaymentDone();
     }
-    // Fallback: poll localStorage for payment result
-    const poll = setInterval(() => {
-      try {
-        const raw = localStorage.getItem("paychangu_result");
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data?.type === "PAYCHANGU_SUCCESS") {
-          localStorage.removeItem("paychangu_result");
-          setPayUrl("");
-          markPaymentDone(data.firestoreId || undefined);
-        }
-      } catch {}
-    }, 800);
-    return () => {
-      bc?.close();
-      clearInterval(poll);
-    };
-  }, [firestoreId]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
   useEffect(() => {
     const saved = localStorage.getItem("gmalina-theme");
@@ -978,35 +1004,9 @@ export default function GmalinaCourtWebsite() {
         .pay-overlay-close:hover { background: rgba(201,169,110,0.3); }
 
         /* ── PAYCHANGU WRAPPER ── */
-        #wrapper {
-          position: fixed !important;
-          inset: 0 !important;
-          z-index: 999999 !important;
-          display: none;
-          align-items: center !important;
-          justify-content: center !important;
-          background: rgba(0,0,0,0.82) !important;
-          backdrop-filter: blur(10px) !important;
-        }
-        #wrapper.show,
-        #wrapper[style*="display: block"],
-        #wrapper[style*="display:block"],
-        #wrapper[style*="display: flex"],
-        #wrapper[style*="display:flex"] {
-          display: flex !important;
-          z-index: 999999 !important;
-        }
-        #wrapper iframe,
-        #wrapper > div {
-          position: relative !important;
-          z-index: 1000000 !important;
-          max-width: 520px !important;
-          width: 95vw !important;
-          height: 90vh !important;
-          border-radius: 20px !important;
-          border: none !important;
-          box-shadow: 0 32px 80px rgba(0,0,0,0.6) !important;
-        }
+        /* PayChangu creates #wrapper itself — we just ensure it sits above everything */
+        #wrapper { z-index: 999999 !important; }
+        #wrapper iframe { border-radius: 16px !important; }
         /* ── BOOKING MODAL ── */
         * { box-sizing: border-box; }
         .booking-backdrop {
@@ -2127,8 +2127,7 @@ export default function GmalinaCourtWebsite() {
         </div>
       </section>
 
-      {/* ─── PAY OVERLAY (iframe — keeps payment inside the website) ─── */}
-{/* Pay overlay removed — PayChangu opens in a new tab now */}
+      {/* PayChangu injects #wrapper itself — we must NOT render it in React (causes hydration error #418) */}
 
       {/* ─── BOOKING MODAL ─── */}
       {bookingOpen && (
@@ -2407,35 +2406,17 @@ export default function GmalinaCourtWebsite() {
                 </button>
                 <button className="btn-outline bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(2); }}>← Back</button>
               </>)}
-              {bookingStep === 4 && !payUrl && (<>
-                <button className="btn-pay bk-btn-main" onClick={openPayChangu}>
-                  <span className="btn-pay-lock">🔒</span>
-                  <span>Pay {fmtMWK(depositAmount)} Deposit</span>
+              {bookingStep === 4 && (<>
+                <button className="btn-pay bk-btn-main" onClick={openPayChangu} disabled={payUrl === "open"}>
+                  {payUrl === "open"
+                    ? <><span style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.25)", borderTop:"2px solid #fff", borderRadius:"50%", display:"inline-block", animation:"spin .8s linear infinite" }} /> Processing…</>
+                    : <><span className="btn-pay-lock">🔒</span><span>Pay {fmtMWK(depositAmount)} Deposit</span></>
+                  }
                 </button>
-                <button className="btn-back bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(3); }}>
+                <button className="btn-back bk-btn-back" onClick={() => { setBookingError(""); setBookingStep(3); }} disabled={payUrl === "open"}>
                   ← Back
                 </button>
               </>)}
-              {bookingStep === 4 && payUrl === "waiting" && (
-                <div style={{ width:"100%", display:"flex", flexDirection:"column", alignItems:"center", gap:10, padding:"6px 0" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, color:"#14a08c", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600 }}>
-                    <span style={{ width:16, height:16, border:"2.5px solid rgba(20,160,140,0.25)", borderTop:"2.5px solid #14a08c", borderRadius:"50%", display:"inline-block", animation:"spin .8s linear infinite", flexShrink:0 }} />
-                    Waiting for payment confirmation…
-                  </div>
-                  <p style={{ margin:0, fontSize:12, color:t.textFaint, textAlign:"center", lineHeight:1.5 }}>
-                    Complete the payment in the tab that just opened. This will update automatically.
-                  </p>
-                  <div style={{ display:"flex", gap:10, width:"100%", flexWrap:"wrap" }}>
-                    <button className="btn-back bk-btn-back" style={{ flex:1 }} onClick={() => { setPayUrl(""); }}>
-                      ← Cancel payment
-                    </button>
-                    <button className="btn-back bk-btn-back" style={{ flex:1 }} onClick={() => openPayChangu()}>
-                      Reopen payment tab ↗
-                    </button>
-                  </div>
-                  <button onClick={() => markPaymentDone()} style={{ background:"none", border:"none", color:t.textFaint, fontSize:11, cursor:"pointer", textDecoration:"underline", fontFamily:"'DM Sans',sans-serif" }}>[Test: simulate success]</button>
-                </div>
-              )}
               {bookingStep === 5 && (<>
                 <button className="btn-primary bk-btn-main" onClick={closeBooking}>Close</button>
                 <button className="btn-outline bk-btn-back" onClick={() => { setBookingStep(1); setForm({ firstName:"",lastName:"",email:"",phone:"",country:"",checkIn:"",checkOut:"",guests:"2",roomType:"Deluxe Room",occasion:"",dietary:"No restrictions",airportTransfer:false,earlyCheckIn:false,lateCheckOut:false,romanticSetup:false,extraBed:false,specialRequests:"" }); setSavedBookingRef(""); setFirestoreId(""); }}>New Booking</button>
@@ -2477,7 +2458,7 @@ export default function GmalinaCourtWebsite() {
 
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ color: t.textFaint, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              © 2026 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
+              © 2025 Gmalina Court. Liwonde, Machinga, Malawi. All rights reserved.
             </div>
             <div style={{ display: "flex", gap: 24 }}>
               <a href="#" className="footer-link">Privacy Policy</a>
